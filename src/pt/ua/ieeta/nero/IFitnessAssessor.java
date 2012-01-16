@@ -7,5 +7,5 @@ package pt.ua.ieeta.nero;
  */
 public interface IFitnessAssessor
 {
-    public double getFitness(EvolvingSolution featureList);
+    public double getFitness(EvolvingSolution solution);
 }

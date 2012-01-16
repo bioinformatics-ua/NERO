@@ -6,7 +6,7 @@ package pt.ua.ieeta.nero;
  *
  * @author Paulo Gaspar
  */
-public class SimulatedAnnealing
+public class SimulatedAnnealing implements Runnable
 {
     /* Final results: solution and its score. */
     private EvolvingSolution resultingSolution;
@@ -14,18 +14,26 @@ public class SimulatedAnnealing
     
     /* Simmulated annealing parameters */
     private double coolingSchedule;
+    private double convergenceFraction;
     private int kmax;
     private IFitnessAssessor fitnessCalculator;
     private EvolvingSolution seed;
-    
+
+    /* DEBUG flag. */
+    private boolean DEBUG = true;
     
     /** Class constructor. Receives some parameters for the simmulated annealing algorithm.
      ** @param fitnessCalculator The class that implements the IFitnessAssessor interface. Responsible for calculating the fitness. 
      ** @param seed The initial object to start from. */
     public SimulatedAnnealing(IFitnessAssessor fitnessCalculator, EvolvingSolution seed)
     {
+        assert fitnessCalculator != null;
+        assert seed != null;
+        assert !seed.getFeatureList().isEmpty();
+        
         this.kmax = 10000;
         this.coolingSchedule = 0.9;
+        this.convergenceFraction = 0.1;
         this.fitnessCalculator = fitnessCalculator;
         this.seed = seed;
     }
@@ -36,13 +44,23 @@ public class SimulatedAnnealing
      ** @param kmax The maximum number of iterations. Each iteration corresponds to a single call to the fitnessCalculator object. 
      ** @param coolingSchedule Controls the simmulated annealing temperature decrease: 
      **                        smaller values make the temperature decrease faster, and the algorithm terminate faster as well.
-     **                        Larger values (closer to 1) generally return better solutions. */
-    public SimulatedAnnealing(IFitnessAssessor fitnessCalculator, EvolvingSolution seed, int kmax, double coolingSchedule)
+     **                        Larger values (closer to 1) generally return better solutions. 
+     ** @param convergenceFraction The percentage of kmax that is considered to be the maximum number of consecutive iterations 
+     *                             without evolution. */
+    public SimulatedAnnealing(IFitnessAssessor fitnessCalculator, EvolvingSolution seed, int kmax, double coolingSchedule, double convergenceFraction)
     {
+        assert fitnessCalculator != null;
+        assert seed != null;
+        assert !seed.getFeatureList().isEmpty();
+        assert kmax > 0;
+        assert ((coolingSchedule > 0) && (coolingSchedule < 1));
+        assert convergenceFraction > 0;
+        
         this.kmax = kmax;
         this.coolingSchedule = coolingSchedule;
         this.fitnessCalculator = fitnessCalculator;
         this.seed = seed;
+        this.convergenceFraction = convergenceFraction;
     }
     
     /** Runs the simulated annealing algorithm. Evolves the seed to find the maximum 
@@ -72,7 +90,7 @@ public class SimulatedAnnealing
         EvolvingSolution sbest, snew;
         
         /* Fitness values: current, new and best. */
-        double e, enew, ebest;
+        double e, enew = 0, ebest;
         
         /* Counter to deal with convergency: if no evolution occurs through 10% 
          * of the maximum cicles, give up! */
@@ -92,8 +110,11 @@ public class SimulatedAnnealing
          *      - the counter doesn't reach the max, 
          *      - AND while the max energy isn't achieved 
          *      - AND while there isn't putative convergence. */
-        while ((k < kmax) && (e < emax) && (convergenceCounter < 0.1*kmax))
+        while ((k < kmax) && (e < emax) && (convergenceCounter < convergenceFraction*kmax))
         {
+              if (DEBUG)
+                System.out.println("Simulated Annealing, Iteration " + k + ". Best: " + ebest + "   Last: " + enew);
+            
               /* Obtain random neighbour. */
               snew = getNeighbour(s);
              
@@ -127,6 +148,21 @@ public class SimulatedAnnealing
               /* Increment iteration counter. */
               k = k + 1;
         }
+        
+        if (DEBUG)
+        {
+            String reason;
+            if (k >= kmax)
+                reason = "the end of iterations was reached.";
+            else if (e >= emax) 
+                reason = "maximum fitness reached.";
+            else if(convergenceCounter >= 0.1*kmax)
+                reason = "convergence reached.";
+            else
+                reason = "UNKNOWN.";
+            
+            System.out.println("Terminated because " + reason);
+        }
 
         score = ebest;
         resultingSolution = sbest;
@@ -157,7 +193,7 @@ public class SimulatedAnnealing
         try 
         {
             double fitness = fitnessCalculator.getFitness(solution);
-            assert ((fitness >= 0) && (fitness <= 1));
+            //assert ((fitness >= 0) && (fitness <= 1)); //fitness constrains ?
             
             return fitness;
         }
@@ -178,7 +214,7 @@ public class SimulatedAnnealing
         EvolvingSolution neighbour = new EvolvingSolution(solution);
         
         /* Calculate a random position. */
-        int randomPos = (int) Math.round(Math.random() * solution.getFeatureList().size());
+        int randomPos = (int) Math.round(Math.random() * (solution.getFeatureList().size()-1));
         
         /* Get feature to be mutated. */
         Feature selectedFeature = neighbour.getFeatureList().get(randomPos);
@@ -205,4 +241,12 @@ public class SimulatedAnnealing
         return resultingSolution;
     }
 
+    /* The runnable interface. Allows to run this class as a thread. */
+    @Override
+    public void run()
+    {
+        System.out.println("Started the Simulated Annealing algorithm.");
+        runSimulatedAnnealing();
+        System.out.println("Ended the Simulated Annealing algorithm.");
+    }
 }
