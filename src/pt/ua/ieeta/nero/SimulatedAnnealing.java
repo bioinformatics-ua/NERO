@@ -222,9 +222,15 @@ public class SimulatedAnnealing implements Runnable
         /* Mutate feature.
          * TODO: all parameters are being changed. Select one randomly?
          * TODO: changes are always completely random, shouldn't they be related to the current annealing temperature? */
-        selectedFeature.setB(Math.random());
-        selectedFeature.setI(Math.random());
-        selectedFeature.setO(Math.random());
+        
+        double rand1 = Math.random();
+        double rand2 = Math.random();
+        double max = Math.max(rand1, rand2);
+        double min = Math.min(rand1, rand2);
+        
+        selectedFeature.setB(min);
+        selectedFeature.setI(max - min);
+        selectedFeature.setO(1 - max);
                 
         return neighbour;
     }
