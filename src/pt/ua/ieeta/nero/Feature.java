@@ -1,14 +1,11 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
+
 package pt.ua.ieeta.nero;
 
 /**
  *
  * @author Paulo
  */
-public class Feature
+public class Feature implements Cloneable
 {
     private String name;
     private double B, I, O;
@@ -24,6 +21,20 @@ public class Feature
         this.B = B;
         this.I = I;
         this.O = O;
+    }
+    
+    @Override
+    public Feature clone()
+    {
+        try
+        {
+            return (Feature) super.clone();
+        } 
+        catch (CloneNotSupportedException ex)
+        {
+            System.out.println("An exception occured when trying to clone a Feature: " + ex.getMessage());
+            return null;
+        }
     }
     
     public Feature()
