@@ -2,13 +2,9 @@ package pt.ua.ieeta.nero;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.slf4j.LoggerFactory;
-import pt.ua.tm.gimli.exception.GimliException;
 
 /**
  *
@@ -24,17 +20,18 @@ public class Nero {
     /**
      * Main thread entry point.
      */
-    public static void main(String[] args) {
+    public static void main(String[] args) 
+    {
         String trainFile = "resources" + File.separator + "corpus" + File.separator + "train_1k.gz";
         String testFile = "resources" + File.separator + "corpus" + File.separator + "test_500.gz";
         String unlabeledFile = "resources" + File.separator + "corpus" + File.separator + "unlabeled_1k.gz";
         String configFile = "config" + File.separator + "bc_semi.config";
+        
         try {
             System.setErr(new PrintStream(new File("tmp")));
         } catch (FileNotFoundException ex) {
             ex.printStackTrace();
         }
-        
         
         System.out.println("Starting the NERO experiment.");
 
@@ -42,25 +39,24 @@ public class Nero {
          * Create seed and fitness function.
          */
         EvolvingSolution seed = createBaseSolution();
-        IFitnessAssessor fitnessClass;
+        IFitnessAssessor fitnessClass = null;
         try {
-            fitnessClass = new CRFFitnessAssessor(configFile, trainFile, testFile, unlabeledFile);
-
-            /*
-             * Instantiate the simulated annealing algorithm.
-             */
-            SimulatedAnnealing sa = new SimulatedAnnealing(fitnessClass, seed, 100, 0.90, 0.2);
-
-            try {
-                Thread saThread = new Thread(sa);
-                saThread.start();
-                saThread.join();
-            } catch (InterruptedException ex) {
-                System.out.println("An exception occured while starting or running the simulated annealing thread: " + ex.getMessage());
-            }
-
-        } catch (GimliException ex) {
+            fitnessClass = new CRFFitnessAssessor(configFile, trainFile, testFile, unlabeledFile); // new BogusFitnessAssessor(); //
+        } catch (Exception ex) {
             ex.printStackTrace();
+        }
+        
+        /*
+            * Instantiate the simulated annealing algorithm.
+            */
+        SimulatedAnnealing sa = new SimulatedAnnealing(fitnessClass, seed, 10000, 0.9, 0.2, 0.25);
+
+        try {
+            Thread saThread = new Thread(sa);
+            saThread.start();
+            saThread.join();
+        } catch (InterruptedException ex) {
+            System.out.println("An exception occured while starting or running the simulated annealing thread: " + ex.getMessage());
         }
 
         System.out.println("Ended the NERO experiment.");
@@ -72,7 +68,8 @@ public class Nero {
     /*
      * Get or Create a base solution to the experiment.
      */
-    private static EvolvingSolution createBaseSolution() {
+    private static EvolvingSolution createBaseSolution() 
+    {
         /*
          * New feature list.
          */
@@ -95,7 +92,6 @@ public class Nero {
         featureList.add(new Feature("LENGTH=3-5", 0.08749876799672476, 0.04899203178189372, 0.8635092002213816));
         featureList.add(new Feature("LENGTH=6+", 0.03034191888010988, 0.06631658538954056, 0.9033414957303495));
         featureList.add(new Feature("MixCase", 0.18628553698173214, 0.05810029864639491, 0.7556141643718729));
-
         
         /*
          * Generate several ficticious features. They are randomly generated.
@@ -113,15 +109,18 @@ public class Nero {
     /**
      * A ficticious class to implement the fitness assessor. The fitness method * returns a sum of all features.
      */
-    private static class BogusFitnessAssessor implements IFitnessAssessor {
-
+    private static class BogusFitnessAssessor implements IFitnessAssessor 
+    {
         @Override
-        public double getFitness(EvolvingSolution solution) {
+        public double getFitness(EvolvingSolution solution) 
+        {
             double sum = 0;
-            for (Feature f : solution.getFeatureList()) {
-                sum += (f.getB() + f.getI() + f.getO());
+            for (Feature f : solution.getFeatureList()) 
+            {
+//                double old = sum;
+                sum += (f.getB() + f.getI() - f.getO());
+//                System.out.println("sum = " + (sum-old));
             }
-
             return sum;
         }
     }

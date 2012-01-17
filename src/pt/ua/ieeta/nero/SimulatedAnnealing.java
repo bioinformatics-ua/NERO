@@ -15,6 +15,7 @@ public class SimulatedAnnealing implements Runnable
     /* Simmulated annealing parameters */
     private double coolingSchedule;
     private double convergenceFraction;
+    private double dispersionFactor;
     private int kmax;
     private IFitnessAssessor fitnessCalculator;
     private EvolvingSolution seed;
@@ -34,6 +35,7 @@ public class SimulatedAnnealing implements Runnable
         this.kmax = 10000;
         this.coolingSchedule = 0.9;
         this.convergenceFraction = 0.1;
+        this.dispersionFactor = 0.25;
         this.fitnessCalculator = fitnessCalculator;
         this.seed = seed;
     }
@@ -46,8 +48,9 @@ public class SimulatedAnnealing implements Runnable
      **                        smaller values make the temperature decrease faster, and the algorithm terminate faster as well.
      **                        Larger values (closer to 1) generally return better solutions. 
      ** @param convergenceFraction The percentage of kmax that is considered to be the maximum number of consecutive iterations 
-     *                             without evolution. */
-    public SimulatedAnnealing(IFitnessAssessor fitnessCalculator, EvolvingSolution seed, int kmax, double coolingSchedule, double convergenceFraction)
+     **                            without evolution. 
+     ** @param dispersionFactor Parameter used when creating mutations. Larger values create larger mutations. */
+    public SimulatedAnnealing(IFitnessAssessor fitnessCalculator, EvolvingSolution seed, int kmax, double coolingSchedule, double convergenceFraction, double dispersionFactor)
     {
         assert fitnessCalculator != null;
         assert seed != null;
@@ -55,12 +58,14 @@ public class SimulatedAnnealing implements Runnable
         assert kmax > 0;
         assert ((coolingSchedule > 0) && (coolingSchedule < 1));
         assert convergenceFraction > 0;
+        assert ((dispersionFactor > 0) && (dispersionFactor <= 1));
         
         this.kmax = kmax;
         this.coolingSchedule = coolingSchedule;
         this.fitnessCalculator = fitnessCalculator;
         this.seed = seed;
         this.convergenceFraction = convergenceFraction;
+        this.dispersionFactor = dispersionFactor;
     }
     
     /** Runs the simulated annealing algorithm. Evolves the seed to find the maximum 
@@ -116,7 +121,7 @@ public class SimulatedAnnealing implements Runnable
                 System.out.println("Simulated Annealing, Iteration " + k + ". Best: " + ebest + "   Last: " + enew);
             
               /* Obtain random neighbour. */
-              snew = getNeighbour(s);
+              snew = getNeighbour(s, k);
              
               /* Calculate energy. */
               enew = calculateEnergy(fitnessCalculator, snew);
@@ -205,7 +210,7 @@ public class SimulatedAnnealing implements Runnable
     }
     
     /** Gets a neighbour object from an input object. */
-    private EvolvingSolution getNeighbour(EvolvingSolution solution)
+    private EvolvingSolution getNeighbour(EvolvingSolution solution, int k)
     {
         assert solution != null;
         assert !solution.getFeatureList().isEmpty();
@@ -219,19 +224,31 @@ public class SimulatedAnnealing implements Runnable
         /* Get feature to be mutated. */
         Feature selectedFeature = neighbour.getFeatureList().get(randomPos);
         
-        /* Mutate feature.
-         * TODO: all parameters are being changed. Select one randomly?
-         * TODO: changes are always completely random, shouldn't they be related to the current annealing temperature? */
+        /*   0----------BI-----------IO--------1    */
+        double BIpos = selectedFeature.getB();
+        double IOpos = selectedFeature.getB() + selectedFeature.getI();
         
-        double rand1 = Math.random();
-        double rand2 = Math.random();
-        double max = Math.max(rand1, rand2);
-        double min = Math.min(rand1, rand2);
-        
-        selectedFeature.setB(min);
-        selectedFeature.setI(max - min);
-        selectedFeature.setO(1 - max);
+        /* Mutate B, I and O values by adding or subtracting a random value that initially varies
+         * between -dispersionFactor and +dispersionFactor. That interval shrinks with passing iterations. */
+        double factor1 = (Math.random() - 0.5) * 2 * ((kmax-k)/(double)kmax) * dispersionFactor;
+        double factor2 = (Math.random() - 0.5) * 2 * ((kmax-k)/(double)kmax) * dispersionFactor;
+        double newBIpos = Math.min(1, Math.max(0 , BIpos + factor1));
+        double newIOpos = Math.min(1, Math.max(0 , IOpos + factor2));
                 
+//        System.out.println("Factor is: " + factor1 + "   e coiso: " + ((kmax-k)/(double)kmax));
+//        System.out.println("Bwas: " + selectedFeature.getB() + "   Bis:" + newBIpos);
+//        System.out.println("Iwas: " + selectedFeature.getB() + "   Iis:" + (newBIpos>newIOpos? 0 : newIOpos-newBIpos));
+//        System.out.println("Owas: " + selectedFeature.getB() + "   Ois:" + (1 - (newBIpos>newIOpos? newBIpos : newIOpos)));
+        
+        selectedFeature.setB(newBIpos);
+        selectedFeature.setI(newBIpos>newIOpos? 0 : newIOpos-newBIpos);
+        selectedFeature.setO(1 - (newBIpos>newIOpos? newBIpos : newIOpos));
+                
+        assert ((selectedFeature.getB() >= 0.0) && (selectedFeature.getB() <= 1.0));
+        assert ((selectedFeature.getI() >= 0.0) && (selectedFeature.getI() <= 1.0));
+        assert ((selectedFeature.getO() >= 0.0) && (selectedFeature.getO() <= 1.0));
+        assert selectedFeature.getB() + selectedFeature.getI() + selectedFeature.getO() <= 1.0;
+        
         return neighbour;
     }
 
