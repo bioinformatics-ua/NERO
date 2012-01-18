@@ -16,6 +16,7 @@ public class SimulatedAnnealing implements Runnable
     private double coolingSchedule;
     private double convergenceFraction;
     private double dispersionFactor;
+    private double mutationAffectedPercent;
     private int kmax;
     private IFitnessAssessor fitnessCalculator;
     private EvolvingSolution seed;
@@ -36,6 +37,7 @@ public class SimulatedAnnealing implements Runnable
         this.coolingSchedule = 0.9;
         this.convergenceFraction = 0.1;
         this.dispersionFactor = 0.25;
+        this.mutationAffectedPercent = 0.1;
         this.fitnessCalculator = fitnessCalculator;
         this.seed = seed;
     }
@@ -49,8 +51,9 @@ public class SimulatedAnnealing implements Runnable
      **                        Larger values (closer to 1) generally return better solutions. 
      ** @param convergenceFraction The percentage of kmax that is considered to be the maximum number of consecutive iterations 
      **                            without evolution. 
-     ** @param dispersionFactor Parameter used when creating mutations. Larger values create larger mutations. */
-    public SimulatedAnnealing(IFitnessAssessor fitnessCalculator, EvolvingSolution seed, int kmax, double coolingSchedule, double convergenceFraction, double dispersionFactor)
+     ** @param dispersionFactor Parameter used when creating mutations. Larger values create larger mutations. 
+     ** @param mutationAffectedPercent The maximum percentage of features that is affected by mutation in each iteration. */
+    public SimulatedAnnealing(IFitnessAssessor fitnessCalculator, EvolvingSolution seed, int kmax, double coolingSchedule, double convergenceFraction, double dispersionFactor, double mutationAffectedPercent)
     {
         assert fitnessCalculator != null;
         assert seed != null;
@@ -66,6 +69,7 @@ public class SimulatedAnnealing implements Runnable
         this.seed = seed;
         this.convergenceFraction = convergenceFraction;
         this.dispersionFactor = dispersionFactor;
+        this.mutationAffectedPercent = mutationAffectedPercent;
     }
     
     /** Runs the simulated annealing algorithm. Evolves the seed to find the maximum 
@@ -218,36 +222,34 @@ public class SimulatedAnnealing implements Runnable
         /* Create a neighbour solution object. */
         EvolvingSolution neighbour = new EvolvingSolution(solution);
         
-        /* Calculate a random position. */
-        int randomPos = (int) Math.round(Math.random() * (solution.getFeatureList().size()-1));
-        
-        /* Get feature to be mutated. */
-        Feature selectedFeature = neighbour.getFeatureList().get(randomPos);
-        
-        /*   0----------BI-----------IO--------1    */
-        double BIpos = selectedFeature.getB();
-        double IOpos = selectedFeature.getB() + selectedFeature.getI();
-        
-        /* Mutate B, I and O values by adding or subtracting a random value that initially varies
-         * between -dispersionFactor and +dispersionFactor. That interval shrinks with passing iterations. */
-        double factor1 = (Math.random() - 0.5) * 2 * ((kmax-k)/(double)kmax) * dispersionFactor;
-        double factor2 = (Math.random() - 0.5) * 2 * ((kmax-k)/(double)kmax) * dispersionFactor;
-        double newBIpos = Math.min(1, Math.max(0 , BIpos + factor1));
-        double newIOpos = Math.min(1, Math.max(0 , IOpos + factor2));
-                
-//        System.out.println("Factor is: " + factor1 + "   e coiso: " + ((kmax-k)/(double)kmax));
-//        System.out.println("Bwas: " + selectedFeature.getB() + "   Bis:" + newBIpos);
-//        System.out.println("Iwas: " + selectedFeature.getB() + "   Iis:" + (newBIpos>newIOpos? 0 : newIOpos-newBIpos));
-//        System.out.println("Owas: " + selectedFeature.getB() + "   Ois:" + (1 - (newBIpos>newIOpos? newBIpos : newIOpos)));
-        
-        selectedFeature.setB(newBIpos);
-        selectedFeature.setI(newBIpos>newIOpos? 0 : newIOpos-newBIpos);
-        selectedFeature.setO(1 - (newBIpos>newIOpos? newBIpos : newIOpos));
-                
-        assert ((selectedFeature.getB() >= 0.0) && (selectedFeature.getB() <= 1.0));
-        assert ((selectedFeature.getI() >= 0.0) && (selectedFeature.getI() <= 1.0));
-        assert ((selectedFeature.getO() >= 0.0) && (selectedFeature.getO() <= 1.0));
-        assert selectedFeature.getB() + selectedFeature.getI() + selectedFeature.getO() <= 1.0;
+        for (int i = 0; i < mutationAffectedPercent * neighbour.getFeatureList().size(); i++)
+        {
+            /* Calculate a random position. */
+            int randomPos = (int) Math.round(Math.random() * (solution.getFeatureList().size()-1));
+
+            /* Get feature to be mutated. */
+            Feature selectedFeature = neighbour.getFeatureList().get(randomPos);
+
+            /*   0----------BI-----------IO--------1    */
+            double BIpos = selectedFeature.getB();
+            double IOpos = selectedFeature.getB() + selectedFeature.getI();
+
+            /* Mutate B, I and O values by adding or subtracting a random value that initially varies
+            * between -dispersionFactor and +dispersionFactor. That interval shrinks with passing iterations. */
+            double factor1 = (Math.random() - 0.5) * 2 * ((kmax-k)/(double)kmax) * dispersionFactor;
+            double factor2 = (Math.random() - 0.5) * 2 * ((kmax-k)/(double)kmax) * dispersionFactor;
+            double newBIpos = Math.min(1, Math.max(0 , BIpos + factor1));
+            double newIOpos = Math.min(1, Math.max(0 , IOpos + factor2));
+
+            selectedFeature.setB(newBIpos);
+            selectedFeature.setI(newBIpos>newIOpos? 0 : newIOpos-newBIpos);
+            selectedFeature.setO(1 - (newBIpos>newIOpos? newBIpos : newIOpos));
+
+            assert ((selectedFeature.getB() >= 0.0) && (selectedFeature.getB() <= 1.0));
+            assert ((selectedFeature.getI() >= 0.0) && (selectedFeature.getI() <= 1.0));
+            assert ((selectedFeature.getO() >= 0.0) && (selectedFeature.getO() <= 1.0));
+            assert selectedFeature.getB() + selectedFeature.getI() + selectedFeature.getO() <= 1.0;
+        }
         
         return neighbour;
     }
