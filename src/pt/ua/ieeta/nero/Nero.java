@@ -41,15 +41,21 @@ public class Nero {
         EvolvingSolution seed = createBaseSolution();
         IFitnessAssessor fitnessClass = null;
         try {
-            fitnessClass = new CRFFitnessAssessor(configFile, trainFile, testFile, unlabeledFile); // new BogusFitnessAssessor(); //
+            fitnessClass = new BogusFitnessAssessor(); //new CRFFitnessAssessor(configFile, trainFile, testFile, unlabeledFile); // 
         } catch (Exception ex) {
             ex.printStackTrace();
         }
         
         /*
+<<<<<<< HEAD
             * Instantiate the simulated annealing algorithm.
             */
         SimulatedAnnealing sa = new SimulatedAnnealing(fitnessClass, seed, 100, 0.9, 0.15, 0.25);
+=======
+         * Instantiate the simulated annealing algorithm.
+         */
+        SimulatedAnnealing sa = new SimulatedAnnealing(fitnessClass, seed, 100, 0.7, 0.2, 0.5, 0.3);
+>>>>>>> 9e441a889e682dca39df14c99892188dc5cb6da9
 
         try {
             Thread saThread = new Thread(sa);
