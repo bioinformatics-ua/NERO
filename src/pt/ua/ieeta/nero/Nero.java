@@ -47,8 +47,8 @@ public class Nero {
         }
         
         /*
-            * Instantiate the simulated annealing algorithm.
-            */
+         * Instantiate the simulated annealing algorithm.
+         */
         SimulatedAnnealing sa = new SimulatedAnnealing(fitnessClass, seed, 100, 0.7, 0.2, 0.5, 0.3);
 
         try {
