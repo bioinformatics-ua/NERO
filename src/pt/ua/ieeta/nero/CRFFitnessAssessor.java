@@ -24,7 +24,7 @@ import pt.ua.tm.gimli.exception.GimliException;
 public class CRFFitnessAssessor implements IFitnessAssessor {
 
     // Maximum number of iterations for CRF
-    private final static int MAX_ITERATIONS = 50;
+    private final static int MAX_ITERATIONS = Integer.MAX_VALUE;
     private final static Constants.LabelFormat LABEL_FORMAT = Constants.LabelFormat.BIO;
     private final static Constants.EntityType ENTITY_TYPE = Constants.EntityType.protein;
     private final Pattern forbiddenPattern = Pattern.compile(Constants.LabelTag.O + "," + Constants.LabelTag.I);

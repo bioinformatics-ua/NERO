@@ -1,107 +1,95 @@
-
 package pt.ua.ieeta.nero;
 
 /**
  *
  * @author Paulo
  */
-public class Feature implements Cloneable
-{
+public class Feature implements Cloneable {
+
     private String name;
     private double B, I, O;
-    
-    public Feature(String name, double B, double I, double O)
-    {
+
+    public Feature(String name, double B, double I, double O) {
         assert name != null;
         assert ((B >= 0) && (B <= 1));
         assert ((I >= 0) && (I <= 1));
         assert ((O >= 0) && (O <= 1));
-        
+
         this.name = name;
         this.B = B;
         this.I = I;
         this.O = O;
     }
-    
+
     @Override
-    public Feature clone()
-    {
-        try
-        {
+    public Feature clone() {
+        try {
             return (Feature) super.clone();
-        } 
-        catch (CloneNotSupportedException ex)
-        {
+        } catch (CloneNotSupportedException ex) {
             System.out.println("An exception occured when trying to clone a Feature: " + ex.getMessage());
             return null;
         }
     }
-    
-    public Feature()
-    {
+
+    public Feature() {
         name = null;
         B = I = O = 0;
     }
 
-    public String getName()
-    {
+    public String getName() {
         return name;
     }
-    
-    public void setName(String name)
-    {
+
+    public void setName(String name) {
         assert name != null;
-        
+
         this.name = name;
     }
-    
+
     /**
      * @return the B
      */
-    public double getB()
-    {
+    public double getB() {
         return B;
     }
 
     /**
      * @param B the B to set
      */
-    public void setB(double B)
-    {
+    public void setB(double B) {
         this.B = B;
     }
 
     /**
      * @return the I
      */
-    public double getI()
-    {
+    public double getI() {
         return I;
     }
 
     /**
      * @param I the I to set
      */
-    public void setI(double I)
-    {
+    public void setI(double I) {
         this.I = I;
     }
 
     /**
      * @return the O
      */
-    public double getO()
-    {
+    public double getO() {
         return O;
     }
 
     /**
      * @param O the O to set
      */
-    public void setO(double O)
-    {
+    public void setO(double O) {
         this.O = O;
     }
-    
-    
+
+    @Override
+    public String toString() {
+        return name + "\t" + "B: " + B + "\t" + "I: " + I + "\t" + "O: " + O;
+    }
 }

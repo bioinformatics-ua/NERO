@@ -49,7 +49,7 @@ public class Nero {
         /*
             * Instantiate the simulated annealing algorithm.
             */
-        SimulatedAnnealing sa = new SimulatedAnnealing(fitnessClass, seed, 10000, 0.9, 0.2, 0.25);
+        SimulatedAnnealing sa = new SimulatedAnnealing(fitnessClass, seed, 100, 0.9, 0.15, 0.25);
 
         try {
             Thread saThread = new Thread(sa);

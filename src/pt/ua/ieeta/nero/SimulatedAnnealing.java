@@ -161,8 +161,12 @@ public class SimulatedAnnealing implements Runnable
                 reason = "the end of iterations was reached.";
             else if (e >= emax) 
                 reason = "maximum fitness reached.";
-            else if(convergenceCounter >= 0.1*kmax)
+            else if(convergenceCounter >= 0.1*kmax){
+                for (Feature f: sbest.getFeatureList()){
+                    System.out.println(f.toString());
+                }
                 reason = "convergence reached.";
+            }
             else
                 reason = "UNKNOWN.";
             
