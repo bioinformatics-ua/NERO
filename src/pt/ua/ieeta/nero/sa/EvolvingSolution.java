@@ -2,8 +2,9 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package pt.ua.ieeta.nero;
+package pt.ua.ieeta.nero.sa;
 
+import pt.ua.ieeta.nero.feature.Feature;
 import java.util.ArrayList;
 import java.util.List;
 
