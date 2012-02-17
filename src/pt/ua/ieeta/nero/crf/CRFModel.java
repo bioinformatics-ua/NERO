@@ -39,8 +39,11 @@ import java.util.logging.Level;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPOutputStream;
 import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.lang.time.StopWatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import pt.ua.ieeta.nero.external.evaluator.BC2Evaluator;
+import pt.ua.ieeta.nero.external.evaluator.Performance;
 import pt.ua.ieeta.nero.sa.EvolvingSolution;
 import pt.ua.ieeta.nero.feature.metrics.InfoGainUtil;
 import pt.ua.ieeta.nero.feature.pipe.PipeBuilder;
@@ -272,12 +275,13 @@ public class CRFModel extends CRFBase {
         try {
             String trainFile = "resources/corpus/bc2gm/train/corpus.gz";
             String devFile = "resources/corpus/bc2gm/dev/corpus.gz";
+            String geneFile = "resources/corpus/bc2gm/dev/annotations";
             String testFile = "resources/corpus/bc2gm/test/corpus.gz";
             String unlabeledFile = "resources" + File.separator + "corpus" + File.separator + "unlabeled_1k.gz";
             String configFile = "config" + File.separator + "bc_semi.config";
 
             ModelConfig mc = new ModelConfig(configFile);
-
+            mc.print();
 
 
             Corpus train = new Corpus(Constants.LabelFormat.BIO, Constants.EntityType.protein, FileUtil.getFile(new FileInputStream(trainFile)));
@@ -304,12 +308,18 @@ public class CRFModel extends CRFBase {
             int totalFeatures = trainInstances.getDataAlphabet().size();
             InfoGainUtil igf = new InfoGainUtil(trainInstances);
 
-            double[] sizes = {0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
-            //double[] sizes = {0.01};
-            double[] results = new double[sizes.length];
+            //double[] sizes = {0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
+            double[] sizes = {0.8};
+            //double[] results = new double[sizes.length];
+            Performance[] results = new Performance[sizes.length];
+            StopWatch[] time = new StopWatch[sizes.length];
             double[] numFeatures = new double[sizes.length];
 
             for (int j = 0; j < sizes.length; j++) {
+                
+                StopWatch sw = new StopWatch();
+                sw.start();
+                
                 List<String> features = igf.getFeatures((int) (sizes[j] * totalFeatures));
 
                 numFeatures[j] = features.size();
@@ -359,8 +369,8 @@ public class CRFModel extends CRFBase {
                 model.write(new GZIPOutputStream(new FileOutputStream("resources/model/bc2gm_o1_fw_" + sizes[j] + ".gz")));
 
 
-                InstanceList devInstances = dev.toModelFormatTrain(p);
-                results[j] = model.getF1(devInstances);
+                //InstanceList devInstances = dev.toModelFormatTrain(p);
+                //results[j] = model.getF1(devInstances);
 
                 Annotator an = new Annotator(dev);
                 an.annotate(model);
@@ -369,8 +379,12 @@ public class CRFModel extends CRFBase {
                 Parentheses.processRemoving(dev);
                 Abbreviation.process(dev);
 
+                String annotations = "resources/silver/bc2gm_dev_o1_fw_" + sizes[j];
                 BCWriter bw = new BCWriter();
-                bw.write(dev, new FileOutputStream("resources/silver/bc2gm_dev_o1_fw_" + sizes[j]));
+                bw.write(dev, new FileOutputStream(annotations));
+                
+                BC2Evaluator eval = new BC2Evaluator(geneFile, geneFile, annotations);
+                results[j] = eval.getPerformance();
                 /*
                  * an = new Annotator(test); an.annotate(model); bw = new BCWriter(); bw.write(test, new
                  * FileOutputStream("resources/silver/bc2gm_test_o1_fw"));
@@ -378,12 +392,17 @@ public class CRFModel extends CRFBase {
 
                 //InstanceList devInstances = dev.toModelFormatTrain(p);
                 //results[j] = model.getF1(devInstances);
+                
+                sw.stop();
+                time[j] = sw;
+                
+                logger.info("{} ({}) - {} in {}", new Object[]{sizes[j], numFeatures[j], results[j], time[j].toString()});
             }
 
 
 
             for (int j = 0; j < sizes.length; j++) {
-                logger.info("{} ({}) - {}", new Object[]{sizes[j], numFeatures[j], results[j]});
+                logger.info("{} ({}) - {} in {}", new Object[]{sizes[j], numFeatures[j], results[j], time[j].toString()});
             }
 
             System.out.println("DONE!");

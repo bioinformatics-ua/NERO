@@ -4,7 +4,6 @@
  */
 package pt.ua.ieeta.nero.feature.pipe;
 
-import pt.ua.ieeta.nero.feature.pipe.FeatureSelector;
 import cc.mallet.pipe.Pipe;
 import cc.mallet.pipe.SerialPipes;
 import cc.mallet.pipe.Target2Label;
@@ -89,7 +88,7 @@ public class PipeBuilder {
 
             if (config.isNgrams()) {
                 //pipe.add(new TokenTextCharNGrams("CHARNGRAM=", new int[]{2, 3, 4}));
-                pipe.add(new TokenTextCharNGrams("CHARNGRAM=", new int[]{2,3}));
+                pipe.add(new TokenTextCharNGrams("CHARNGRAM=", new int[]{2, 3}));
             }
 
             if (config.isSuffix()) {

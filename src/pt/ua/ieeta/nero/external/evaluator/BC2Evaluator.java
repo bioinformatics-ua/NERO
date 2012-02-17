@@ -53,11 +53,11 @@ public class BC2Evaluator {
                 }
             }
         } catch (IOException ex) {
-            throw new RuntimeException("There was a problem parsing the result.", ex);
+            throw new RuntimeException("There was a problem parsing the performance result. Check if you have Perl installed.", ex);
         }
 
         if (performance == null) {
-            throw new RuntimeException("There is a problem with the provided annotations file.");
+            throw new RuntimeException("There is a problem with the provided annotations file. It is not possible to collect a valid performance result.");
         }
 
         return performance;

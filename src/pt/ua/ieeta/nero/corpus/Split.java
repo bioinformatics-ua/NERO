@@ -42,7 +42,7 @@ public class Split {
             int trainSize = (int) (total * (2.0 / 3.0));
             int devSize = total - trainSize;
 
-            trainSize = 13000;
+            trainSize = 500;
             
             logger.info("TRAIN SIZE: {}", trainSize);
             logger.info("DEV SIZE: {}", devSize);
@@ -72,13 +72,13 @@ public class Split {
 
             // Write corpus and annotations
             // Train
-            //train.write( new GZIPOutputStream(new FileOutputStream("resources/corpus/bc2gm/train/500.gz")));
+            train.write( new GZIPOutputStream(new FileOutputStream("resources/corpus/bc2gm/train/500.gz")));
             BCWriter bc = new BCWriter();
             //bc.write(train, new FileOutputStream("resources/corpus/bc2gm/train/annotations"));
 
             // Test
-            dev.write(new GZIPOutputStream(new FileOutputStream("resources/corpus/bc2gm/dev/2k.gz")));
-            bc.write(dev, new FileOutputStream("resources/corpus/bc2gm/dev/2k"));
+            //dev.write(new GZIPOutputStream(new FileOutputStream("resources/corpus/bc2gm/dev/2k.gz")));
+            //bc.write(dev, new FileOutputStream("resources/corpus/bc2gm/dev/2k"));
 
         } catch (IOException ex) {
             ex.printStackTrace();
