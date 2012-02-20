@@ -14,8 +14,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.regex.Pattern;
+import org.apache.commons.lang.time.StopWatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import pt.ua.ieeta.nero.FSOptimisation;
 import pt.ua.ieeta.nero.external.evaluator.BC2Evaluator;
 import pt.ua.ieeta.nero.external.evaluator.Performance;
 import pt.ua.ieeta.nero.feature.pipe.PipeBuilder;
@@ -51,93 +53,55 @@ public class CRFFitnessAssessor implements IFitnessAssessor {
     private InstanceList test;
     private Corpus testCorpus;
     private InstanceList unlabeled;
-    private CRFModel crfModel;
     private String geneFile;
+    private CRF supervisedCRF;
 
-    public CRFFitnessAssessor(ModelConfig config, final InputStream trainFile, final InputStream testFile, final InputStream unlabeledFile, final List<String> features, final String geneFile) throws GimliException {
+    public CRFFitnessAssessor(ModelConfig config, final InstanceList train, final InstanceList test, final InstanceList unlabeled, Corpus testCorpus, final List<String> features, final String geneFile, final CRF supervisedCRF) throws GimliException {
         assert (config != null);
-        assert (trainFile != null);
-        assert (testFile != null);
-        assert (unlabeledFile != null);
+        assert (train != null);
+        assert (test != null);
+        assert (unlabeled != null);
         assert (features != null);
         assert (geneFile != null);
+        assert (supervisedCRF != null);
+        assert (testCorpus != null);
 
-        this.geneFile = geneFile;
-        
-        // Load model feature configuration
         this.config = config;
-        CRFModel model = new CRFModel(config, Constants.Parsing.FW);
+        this.train = train;
+        this.test = test;
+        this.unlabeled = unlabeled;
+        this.geneFile = geneFile;
+        this.supervisedCRF = supervisedCRF;
+        this.testCorpus = testCorpus;
         
-        // Load pipe
-        PipeBuilder pb = new PipeBuilder(config);
-        pb.initialise();
-        pb.addFeatureSelector(features);
-        pb.finalise(false);
-        Pipe p = pb.getPipe();
-        
-        //Pipe p = model.getFeaturePipe();
-
-        // Load train data
-        logger.info("Loading train data...");
-        Corpus c = new Corpus(LABEL_FORMAT, ENTITY_TYPE, trainFile);
-        this.train = c.toModelFormatTrain(p);
-
-        // Load test data
-        logger.info("Loading test data...");
-        testCorpus = new Corpus(LABEL_FORMAT, ENTITY_TYPE, testFile);
-        this.test = testCorpus.toModelFormatTrain(p);
-
         // Load unlabeled data
-        logger.info("Loading unlabeled data...");
-        this.unlabeled = CRFModel.loadUnlabeledData(unlabeledFile, p);
+        //logger.info("Loading unlabeled data...");
+        //this.unlabeled = CRFModel.loadUnlabeledData(unlabeledFile, supervisedCRF.getInputPipe());
     }
-
-    private CRF getCRF() {
-        int order = config.getOrder() + 1;
-        int[] orders = new int[order];
-        for (int i = 0; i < order; i++) {
-            orders[i] = i;
-        }
-
-        CRF crf = new CRF(train.getPipe(), (Pipe) null);
-        String startStateName = crf.addOrderNStates(
-                train,
-                orders,
-                null, // "defaults" parameter; see mallet javadoc
-                "O",
-                forbiddenPattern,
-                null,
-                true); // true for a fully connected CRF
-
-        for (int i = 0; i < crf.numStates(); i++) {
-            crf.getState(i).setInitialWeight(Transducer.IMPOSSIBLE_WEIGHT);
-        }
-        crf.getState(startStateName).setInitialWeight(0.0);
-        crf.setWeightsDimensionAsIn(train, false);
-
-        return crf;
-    }
-
+    
+    
     @Override
     public double getFitness(EvolvingSolution solution) {
         assert (solution != null);
 
+        CRF crf =new CRF(supervisedCRF);
+        
+        logger.info("SUPERVISED CRF: {}", FSOptimisation.getPerformance(config, crf, testCorpus, geneFile));
+        
         // Create CRFModel
-        crfModel = new CRFModel(config, Constants.Parsing.FW);
+        CRFModel model = new CRFModel(config, Constants.Parsing.FW);
 
         // Set CRF
-        crfModel.setCRF(getCRF());
+        model.setCRF(new CRF(supervisedCRF));
 
-        try {
-            // Train CRF Model
-            crfModel.train(train, unlabeled, solution, MAX_ITERATIONS);
-        } catch (Exception ex) {
-            logger.error("Problem training CRF: ", ex);
-        }
+        StopWatch time = new StopWatch();
+        time.start();
+        int numIterations = model.train(train, unlabeled, solution, Integer.MAX_VALUE);
+        time.stop();
 
         // Annotate corpus
         Annotator an = new Annotator(testCorpus);
-        an.annotate(crfModel);
+        an.annotate(model);
         
         // Post-process corpus
         Parentheses.processRemoving(testCorpus);
@@ -162,8 +126,65 @@ public class CRFFitnessAssessor implements IFitnessAssessor {
         // Get Performance
         BC2Evaluator eval = new BC2Evaluator(geneFile, geneFile, tmp.getAbsolutePath());
         Performance p = eval.getPerformance();
+        p.setNumIterations(numIterations);
+        p.setTime(time);
+        
+        logger.info("PERFORMANCE: {}", p);
         
         // Return F-measure
         return p.getF1();
+    }
+    
+    
+    
+    
+    
+    
+    public Performance getFitnessPerformance(EvolvingSolution solution) {
+        assert (solution != null);
+        int numIterations = 0;
+        
+        // Create CRFModel
+        CRFModel model = new CRFModel(config, Constants.Parsing.FW);
+
+        // Set CRF
+        model.setCRF(supervisedCRF);
+
+        try {
+            // Train CRF Model
+            numIterations = model.train(train, unlabeled, solution, MAX_ITERATIONS);
+        } catch (Exception ex) {
+            logger.error("Problem training CRF: ", ex);
+        }
+
+        // Annotate corpus
+        Annotator an = new Annotator(testCorpus);
+        an.annotate(model);
+        
+        // Post-process corpus
+        Parentheses.processRemoving(testCorpus);
+        Abbreviation.process(testCorpus);
+        
+        // Generate annotation file
+        File tmp = null;
+        try {
+            tmp = File.createTempFile("annotations", ".txt");
+        } catch (IOException ex) {
+            throw new RuntimeException("There was a problem creating the temporary file.", ex);
+        }
+        tmp.deleteOnExit();
+        
+        BCWriter writer = new BCWriter();
+        try {
+            writer.write(testCorpus, new FileOutputStream(tmp));
+        } catch (Exception ex) {
+            throw new RuntimeException("There was a problem writing the annotations file.", ex);
+        }
+        
+        // Get Performance
+        BC2Evaluator eval = new BC2Evaluator(geneFile, geneFile, tmp.getAbsolutePath());
+        Performance p = eval.getPerformance();
+        p.setNumIterations(numIterations);
+        return p;
     }
 }

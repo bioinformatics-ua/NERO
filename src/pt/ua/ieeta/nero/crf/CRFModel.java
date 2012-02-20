@@ -21,10 +21,8 @@ package pt.ua.ieeta.nero.crf;
 
 import pt.ua.ieeta.nero.feature.Feature;
 import cc.mallet.fst.*;
-import cc.mallet.fst.semi_supervised.CRFOptimizableByGE;
 import cc.mallet.fst.semi_supervised.StateLabelMap;
 import cc.mallet.fst.semi_supervised.constraints.OneLabelKLGEConstraints;
-import cc.mallet.optimize.Optimizable;
 import cc.mallet.pipe.*;
 import pt.ua.tm.gimli.config.ModelConfig;
 import cc.mallet.types.Instance;
@@ -42,10 +40,11 @@ import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.time.StopWatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import pt.ua.ieeta.nero.FSOptimisation;
 import pt.ua.ieeta.nero.external.evaluator.BC2Evaluator;
 import pt.ua.ieeta.nero.external.evaluator.Performance;
-import pt.ua.ieeta.nero.sa.EvolvingSolution;
 import pt.ua.ieeta.nero.feature.metrics.InfoGainUtil;
+import pt.ua.ieeta.nero.sa.EvolvingSolution;
 import pt.ua.ieeta.nero.feature.pipe.PipeBuilder;
 import pt.ua.tm.gimli.annotator.Annotator;
 import pt.ua.tm.gimli.config.Constants;
@@ -71,6 +70,7 @@ public class CRFModel extends CRFBase {
      * {@link Logger} to be used in the class.
      */
     private static Logger logger = LoggerFactory.getLogger(CRFModel.class);
+    private CRF supervisedCRF;
     private static final Pattern forbiddenPattern = Pattern.compile(Constants.LabelTag.O + "," + Constants.LabelTag.I);
 
     /**
@@ -81,6 +81,7 @@ public class CRFModel extends CRFBase {
      */
     public CRFModel(final ModelConfig config, final Parsing parsing) {
         super(config, parsing);
+        supervisedCRF = null;
     }
 
     /**
@@ -93,6 +94,15 @@ public class CRFModel extends CRFBase {
      */
     public CRFModel(final ModelConfig config, final Parsing parsing, final InputStream input) throws GimliException {
         super(config, parsing, input);
+        supervisedCRF = null;
+    }
+
+    public CRF getSupervisedCRF() {
+        return supervisedCRF;
+    }
+
+    public void setSupervisedCRF(CRF supervisedCRF) {
+        this.supervisedCRF = supervisedCRF;
     }
 
     private HashMap<Integer, double[][]> loadGEConstraints(EvolvingSolution solution, InstanceList data) {
@@ -153,7 +163,7 @@ public class CRFModel extends CRFBase {
         return evaluator.getOverallF1();
     }
 
-    public void train(final InstanceList train, final InstanceList unlabeled, final EvolvingSolution features, final int iterations) {
+    public int train(final InstanceList train, final InstanceList unlabeled, final EvolvingSolution features, final int iterations) {
         //CRF crf = getCRF();
 
         // Semi-supervised
@@ -211,29 +221,52 @@ public class CRFModel extends CRFBase {
         CRF crf = getCRF();
 
         // Optimazable gradients
-        Optimizable.ByGradientValue[] opts;
-        if (unlabeled != null && features != null) {
-            opts = new Optimizable.ByGradientValue[]{
-                new CRFOptimizableByGE(crf, constraintsList, unlabeled, map, numThreads, 1.0),
-                new CRFOptimizableByLabelLikelihood(crf, train)
-            };
-        } else {
-            opts = new Optimizable.ByGradientValue[]{
-                //new CRFOptimizableByGE(crf, constraintsList, unlabeled, map, numThreads, 1.0),
-                new CRFOptimizableByLabelLikelihood(crf, train)
-            };
-        }
+        /*
+         * Optimizable.ByGradientValue[] opts; if (unlabeled != null && features != null) { opts = new
+         * Optimizable.ByGradientValue[]{ new CRFOptimizableByGE(crf, constraintsList, unlabeled, map, 8), new
+         * CRFOptimizableByLabelLikelihood(crf, train),}; } else { opts = new Optimizable.ByGradientValue[]{ //new
+         * CRFOptimizableByGE(crf, constraintsList, unlabeled, map, numThreads, 1.0), new
+         * CRFOptimizableByLabelLikelihood(crf, train) }; }
+         */
+
+        logger.info("TOTAL SIZE OF ALPHABET AFTER FEATURE SELECTION): {}", train.getDataAlphabet().size());
 
         // Train
-        CRFTrainerByValueGradients crfTrainer = new CRFTrainerByValueGradients(crf, opts);
-        crfTrainer.train(train, iterations);
 
-        //CRFTrainerByThreadedLabelLikelihood crfTrainer = new CRFTrainerByThreadedLabelLikelihood(crf, 8);
-        //crfTrainer.train(train, iterations);
-        //crfTrainer.shutdown();
+        if (unlabeled != null && features != null) {
+            //CRFTrainerByValueGradients crfTrainer = new CRFTrainerByValueGradients(crf, opts);
+            //crfTrainer.train(train, iterations);
 
-        // Set CRF
-        setCRF(crf);
+            MyCRFTrainerByLikelihoodAndGE2 crfTrainer = new MyCRFTrainerByLikelihoodAndGE2(crf, constraintsList, map);
+            crfTrainer.setNumThreads(8);
+            crfTrainer.setGEWeight(1.0);
+            crfTrainer.setGaussianPriorVariance(1.0);
+            crfTrainer.setInitSupervised(true);
+            //crfTrainer.setSupervisedCRF(supervisedCRF);
+            crfTrainer.train(train, unlabeled, iterations);
+
+            //this.supervisedCRF = crfTrainer.getSupervisedCRF();
+
+            // Set CRF
+            setCRF(crf);
+            return crfTrainer.getIteration() - 1;
+
+
+        } else {
+            CRFTrainerByThreadedLabelLikelihood crfTrainer = new CRFTrainerByThreadedLabelLikelihood(crf, 8);
+            crfTrainer.train(train, iterations);
+            crfTrainer.shutdown();
+
+            // Set CRF
+            setCRF(crf);
+            return crfTrainer.getIteration() - 1;
+        }
+
+
+
+
+
+
     }
 
     /**
@@ -289,46 +322,42 @@ public class CRFModel extends CRFBase {
 
 
             // Get test data
-            PipeBuilder pb = new PipeBuilder(mc);
-            pb.initialise();
-            pb.finalise(false);
-            Pipe p = pb.getPipe();
+            //PipeBuilder pb = new PipeBuilder(mc);
+            //pb.initialise();
+            //pb.finalise(false);
+            //Pipe p = pb.getPipe();
             Corpus dev = new Corpus(Constants.LabelFormat.BIO, Constants.EntityType.protein, FileUtil.getFile(new FileInputStream(devFile)));
-            Corpus test = new Corpus(Constants.LabelFormat.BIO, Constants.EntityType.protein, FileUtil.getFile(new FileInputStream(testFile)));
+            //Corpus test = new Corpus(Constants.LabelFormat.BIO, Constants.EntityType.protein, FileUtil.getFile(new FileInputStream(testFile)));
             //InstanceList devInstances = dev.toModelFormatTrain(p);
             //InstanceList unlabeled = loadUnlabeledData(FileUtil.getFile(new FileInputStream(unlabeledFile)), p);
 
 
             // Get top features
-            pb = new PipeBuilder(mc);
+            PipeBuilder pb = new PipeBuilder(mc);
             pb.initialise();
             pb.finalise(true);
-            p = pb.getPipe();
+            Pipe p = pb.getPipe();
             InstanceList trainInstances = train.toModelFormatTrain(p);
             int totalFeatures = trainInstances.getDataAlphabet().size();
             InfoGainUtil igf = new InfoGainUtil(trainInstances);
 
             //double[] sizes = {0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
-            double[] sizes = {0.8};
-            //double[] results = new double[sizes.length];
+            //double[] sizes = {0.8, 0.9, 1.0};
+            double[] sizes = {0.6, 0.7, 0.8, 0.9};
             Performance[] results = new Performance[sizes.length];
-            StopWatch[] time = new StopWatch[sizes.length];
             double[] numFeatures = new double[sizes.length];
 
             for (int j = 0; j < sizes.length; j++) {
-                
-                StopWatch sw = new StopWatch();
-                sw.start();
-                
-                List<String> features = igf.getFeatures((int) (sizes[j] * totalFeatures));
 
-                numFeatures[j] = features.size();
 
-                if (j == 0) {
-                    for (String f : features) {
-                        logger.info("{}", f);
-                    }
-                }
+                int feat = (int) (sizes[j] * totalFeatures) - 5;
+                List<String> features = igf.getFeatures(feat);
+
+                numFeatures[j] = feat;
+
+                /*
+                 * if (j == 0) { for (String f : features) { logger.info("{}", f); } }
+                 */
 
                 // Get data
                 pb = new PipeBuilder(mc);
@@ -337,54 +366,49 @@ public class CRFModel extends CRFBase {
                 pb.finalise(false);
                 p = pb.getPipe();
 
-                trainInstances = train.toModelFormatTrain(p);
+                Performance per = new Performance();
+                CRF crf = FSOptimisation.getSupervisedCRF(train.toModelFormatTrain(p), mc, dev, geneFile, per);
 
-                // Set CRF
-                int order = mc.getOrder() + 1;
-                int[] orders = new int[order];
-                for (int i = 0; i < order; i++) {
-                    orders[i] = i;
-                }
-
-                CRF crf = new CRF(trainInstances.getPipe(), (Pipe) null);
-                String startStateName = crf.addOrderNStates(
-                        trainInstances,
-                        orders,
-                        null, // "defaults" parameter; see mallet javadoc
-                        "O",
-                        forbiddenPattern,
-                        null,
-                        true); // true for a fully connected CRF
-
-                for (int i = 0; i < crf.numStates(); i++) {
-                    crf.getState(i).setInitialWeight(Transducer.IMPOSSIBLE_WEIGHT);
-                }
-                crf.getState(startStateName).setInitialWeight(0.0);
-                crf.setWeightsDimensionAsIn(trainInstances, false);
-                CRFModel model = new CRFModel(mc, Parsing.FW);
-                model.setCRF(crf);
-
-                //model.train(trainInstances, unlabeled, Nero.createBaseSolution(), Integer.MAX_VALUE);
-                model.train(trainInstances, null, null, Integer.MAX_VALUE);
-                model.write(new GZIPOutputStream(new FileOutputStream("resources/model/bc2gm_o1_fw_" + sizes[j] + ".gz")));
+                results[j] = per;
 
 
-                //InstanceList devInstances = dev.toModelFormatTrain(p);
-                //results[j] = model.getF1(devInstances);
 
-                Annotator an = new Annotator(dev);
-                an.annotate(model);
 
-                // Pre-process annotated corpus
-                Parentheses.processRemoving(dev);
-                Abbreviation.process(dev);
 
-                String annotations = "resources/silver/bc2gm_dev_o1_fw_" + sizes[j];
-                BCWriter bw = new BCWriter();
-                bw.write(dev, new FileOutputStream(annotations));
-                
-                BC2Evaluator eval = new BC2Evaluator(geneFile, geneFile, annotations);
-                results[j] = eval.getPerformance();
+
+                /*
+                 * InstanceList newInstList = train.toModelFormatTrain(p);
+                 *
+                 * // Set CRF int order = mc.getOrder() + 1; int[] orders = new int[order]; for (int i = 0; i < order;
+                 * i++) { orders[i] = i; }
+                 *
+                 * CRF crf = new CRF(newInstList.getPipe(), (Pipe) null); String startStateName = crf.addOrderNStates(
+                 * newInstList, orders, null, // "defaults" parameter; see mallet javadoc "O", forbiddenPattern, null,
+                 * true); // true for a fully connected CRF
+                 *
+                 * for (int i = 0; i < crf.numStates(); i++) {
+                 * crf.getState(i).setInitialWeight(Transducer.IMPOSSIBLE_WEIGHT); }
+                 * crf.getState(startStateName).setInitialWeight(0.0); crf.setWeightsDimensionAsIn(newInstList, false);
+                 * CRFModel model = new CRFModel(mc, Parsing.FW); model.setCRF(crf);
+                 *
+                 * //model.train(trainInstances, unlabeled, Nero.createBaseSolution(), Integer.MAX_VALUE); int
+                 * numIterations = model.train(newInstList, null, null, Integer.MAX_VALUE, null); model.write(new
+                 * GZIPOutputStream(new FileOutputStream("resources/model/bc2gm_o1_fw_" + sizes[j] + ".gz")));
+                 *
+                 * iterations[j] = numIterations;
+                 *
+                 * //InstanceList devInstances = dev.toModelFormatTrain(p); //results[j] = model.getF1(devInstances);
+                 *
+                 * Annotator an = new Annotator(dev); an.annotate(model);
+                 *
+                 * // Pre-process annotated corpus Parentheses.processRemoving(dev); Abbreviation.process(dev);
+                 *
+                 * String annotations = "resources/silver/bc2gm_dev_o1_fw_" + sizes[j]; BCWriter bw = new BCWriter();
+                 * bw.write(dev, new FileOutputStream(annotations));
+                 *
+                 * BC2Evaluator eval = new BC2Evaluator(geneFile, geneFile, annotations); results[j] =
+                 * eval.getPerformance();
+                 */
                 /*
                  * an = new Annotator(test); an.annotate(model); bw = new BCWriter(); bw.write(test, new
                  * FileOutputStream("resources/silver/bc2gm_test_o1_fw"));
@@ -392,17 +416,16 @@ public class CRFModel extends CRFBase {
 
                 //InstanceList devInstances = dev.toModelFormatTrain(p);
                 //results[j] = model.getF1(devInstances);
-                
-                sw.stop();
-                time[j] = sw;
-                
-                logger.info("{} ({}) - {} in {}", new Object[]{sizes[j], numFeatures[j], results[j], time[j].toString()});
+
+                logger.info("{} ({}) - {} in {} - {} iterations", new Object[]{sizes[j], numFeatures[j], results[j], results[j].getTime(), results[j].getNumIterations()});
             }
 
 
 
+            logger.info("");
+            logger.info("");
             for (int j = 0; j < sizes.length; j++) {
-                logger.info("{} ({}) - {} in {}", new Object[]{sizes[j], numFeatures[j], results[j], time[j].toString()});
+                logger.info("{} ({}) - {} in {} - {} iterations", new Object[]{sizes[j], numFeatures[j], results[j], results[j].getTime(), results[j].getNumIterations()});
             }
 
             System.out.println("DONE!");

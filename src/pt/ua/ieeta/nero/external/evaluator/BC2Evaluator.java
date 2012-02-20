@@ -50,6 +50,8 @@ public class BC2Evaluator {
                     f1 = Double.parseDouble(parts[5]);
 
                     performance = new Performance(precision, recall, f1);
+                    
+                    logger.info("LINE: {}", line);
                 }
             }
         } catch (IOException ex) {

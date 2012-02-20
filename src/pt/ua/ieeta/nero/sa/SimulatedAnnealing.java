@@ -1,6 +1,8 @@
 
 package pt.ua.ieeta.nero.sa;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import pt.ua.ieeta.nero.feature.Feature;
 
 
@@ -11,6 +13,7 @@ import pt.ua.ieeta.nero.feature.Feature;
 public class SimulatedAnnealing implements Runnable
 {
     /* Final results: solution and its score. */
+    private static Logger logger = LoggerFactory.getLogger(SimulatedAnnealing.class);
     private EvolvingSolution resultingSolution;
     private double score;
     
@@ -85,7 +88,7 @@ public class SimulatedAnnealing implements Runnable
         /* Control maximum number of iterations. */
         if (kmax <= 0)
         {
-            System.out.println("Invalid maximum number of interations! Must be a positive integer number. The input was: " + kmax);
+            logger.error("Invalid maximum number of interations! Must be a positive integer number. The input was: " + kmax);
             
             score = 0;
             resultingSolution = null;
@@ -124,7 +127,7 @@ public class SimulatedAnnealing implements Runnable
         while ((k < kmax) && (e < emax) && (convergenceCounter < convergenceFraction*kmax))
         {
               if (DEBUG)
-                System.out.println("Simulated Annealing, Iteration " + k + ". Best: " + ebest + "   Last: " + enew);
+                logger.info("Simulated Annealing, Iteration " + k + ". Best: " + ebest + "   Last: " + enew);
             
               /* Obtain random neighbour. */
               snew = getNeighbour(s, k);
@@ -173,7 +176,7 @@ public class SimulatedAnnealing implements Runnable
             else
                 reason = "UNKNOWN.";
             
-            System.out.println("Terminated because " + reason);
+            logger.info("Terminated because " + reason);
             
             for (Feature f: sbest.getFeatureList()){
                     System.out.println(f.toString());
@@ -215,7 +218,7 @@ public class SimulatedAnnealing implements Runnable
         }
         catch(Exception ex)
         {
-            System.out.println("An exception occured while calculating the fitness score: " + ex.getMessage());
+            logger.error("An exception occured while calculating the fitness score: " + ex.getMessage());
             return 0;
         }
     }
@@ -277,8 +280,8 @@ public class SimulatedAnnealing implements Runnable
     @Override
     public void run()
     {
-        System.out.println("Started the Simulated Annealing algorithm.");
+        logger.info("Started the Simulated Annealing algorithm.");
         runSimulatedAnnealing();
-        System.out.println("Ended the Simulated Annealing algorithm.");
+        logger.info("Ended the Simulated Annealing algorithm.");
     }
 }

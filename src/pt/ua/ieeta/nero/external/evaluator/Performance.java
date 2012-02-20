@@ -4,6 +4,8 @@
  */
 package pt.ua.ieeta.nero.external.evaluator;
 
+import org.apache.commons.lang.time.StopWatch;
+
 /**
  *
  * @author david
@@ -12,13 +14,24 @@ public class Performance {
     private double precision;
     private double recall;
     private double f1;
+    private int numIterations;
+    private StopWatch time;
 
+    public Performance(){
+        this.precision = 0.0;
+        this.recall = 0.0;
+        this.f1 = 0.0;
+        this.numIterations = 0;
+        this.time = new StopWatch();
+    }
+    
     public Performance(double precision, double recall, double f1) {
+        super();
         this.precision = precision;
         this.recall = recall;
         this.f1 = f1;
     }
-
+    
     public double getF1() {
         return f1;
     }
@@ -43,9 +56,27 @@ public class Performance {
         this.recall = recall;
     }
 
+    public int getNumIterations() {
+        return numIterations;
+    }
+
+    public void setNumIterations(int numIterations) {
+        this.numIterations = numIterations;
+    }
+
+    public StopWatch getTime() {
+        return time;
+    }
+
+    public void setTime(StopWatch time) {
+        this.time = time;
+    }
+
     @Override
     public String toString() {
-        return "Performance{" + "Precision=" + precision + ", Recall=" + recall + ", F1=" + f1 + '}';
+        return "Performance{" + "P=" + precision + ", R=" + recall + ", F1=" + f1 + ", Iterations=" + numIterations + ", Time=" + time + '}';
     }
+    
+    
     
 }

@@ -7,6 +7,8 @@ package pt.ua.ieeta.nero.sa;
 import pt.ua.ieeta.nero.feature.Feature;
 import java.util.ArrayList;
 import java.util.List;
+import org.slf4j.LoggerFactory;
+import pt.ua.ieeta.nero.Nero;
 
 /**
  *
@@ -14,6 +16,7 @@ import java.util.List;
  */
 public class EvolvingSolution
 {
+    private static org.slf4j.Logger logger = LoggerFactory.getLogger(EvolvingSolution.class);
     /* The content of this solution. */
     private List<Feature> featureList;
 
@@ -61,5 +64,9 @@ public class EvolvingSolution
         this.featureList = solution;
     }
     
-    
+    public void print(){
+        for(Feature f:featureList){
+            logger.info("{}", f);
+        }
+    }
 }

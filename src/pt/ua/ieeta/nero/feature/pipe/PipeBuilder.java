@@ -126,8 +126,11 @@ public class PipeBuilder {
                 //pipe.add(new FeaturesInWindow("WINDOW_LEXICON=", -3, 3, Pattern.compile("LEXICON=.*"), true));
                 //pipe.add(new FeaturesInWindow("WINDOW_SPECIAL=", -3, 3, Pattern.compile("SPECIAL=.*"), true));
                 //pipe.add(new FeaturesInWindow("WINDOW_FEATURES=", -1, 1));
-                pipe.add(new FeaturesAtWindow(-3, 3));
+                //pipe.add(new FeaturesAtWindow(-3, 3));
+                pipe.add(new FeaturesInWindow("WINDOW=", -2, 2));
             }
+            
+            
 
         } catch (Exception ex) {
             throw new RuntimeException("There was a problem initializing the features.", ex);
