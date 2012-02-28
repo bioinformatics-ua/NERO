@@ -5,13 +5,10 @@
 package pt.ua.ieeta.nero.crf;
 
 import cc.mallet.fst.CRF;
-import cc.mallet.fst.Transducer;
-import cc.mallet.pipe.Pipe;
 import cc.mallet.types.InstanceList;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.List;
 import java.util.regex.Pattern;
 import org.apache.commons.lang.time.StopWatch;
@@ -20,7 +17,6 @@ import org.slf4j.LoggerFactory;
 import pt.ua.ieeta.nero.FSOptimisation;
 import pt.ua.ieeta.nero.external.evaluator.BC2Evaluator;
 import pt.ua.ieeta.nero.external.evaluator.Performance;
-import pt.ua.ieeta.nero.feature.pipe.PipeBuilder;
 import pt.ua.ieeta.nero.sa.EvolvingSolution;
 import pt.ua.ieeta.nero.sa.IFitnessAssessor;
 import pt.ua.tm.gimli.annotator.Annotator;
@@ -86,7 +82,7 @@ public class CRFFitnessAssessor implements IFitnessAssessor {
 
         CRF crf =new CRF(supervisedCRF);
         
-        logger.info("SUPERVISED CRF: {}", FSOptimisation.getPerformance(config, crf, testCorpus, geneFile));
+//        logger.info("SUPERVISED CRF: {}", FSOptimisation.getPerformance(config, crf, testCorpus, geneFile));
         
         // Create CRFModel
         CRFModel model = new CRFModel(config, Constants.Parsing.FW);

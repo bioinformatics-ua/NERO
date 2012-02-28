@@ -5,11 +5,8 @@
 package pt.ua.ieeta.nero.external.evaluator;
 
 import java.io.*;
-import java.util.List;
-import java.util.logging.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import pt.ua.tm.gimli.exception.GimliException;
 
 /**
  *
@@ -51,7 +48,7 @@ public class BC2Evaluator {
 
                     performance = new Performance(precision, recall, f1);
                     
-                    logger.info("LINE: {}", line);
+//                    logger.info("LINE: {}", line);
                 }
             }
         } catch (IOException ex) {

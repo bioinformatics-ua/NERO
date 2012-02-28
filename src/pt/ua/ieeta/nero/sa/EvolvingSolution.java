@@ -4,11 +4,10 @@
  */
 package pt.ua.ieeta.nero.sa;
 
-import pt.ua.ieeta.nero.feature.Feature;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.LoggerFactory;
-import pt.ua.ieeta.nero.Nero;
+import pt.ua.ieeta.nero.feaure.targets.IOptimizationTarget;
 
 /**
  *
@@ -17,11 +16,12 @@ import pt.ua.ieeta.nero.Nero;
 public class EvolvingSolution
 {
     private static org.slf4j.Logger logger = LoggerFactory.getLogger(EvolvingSolution.class);
+    
     /* The content of this solution. */
-    private List<Feature> featureList;
+    private List<IOptimizationTarget> featureList;
 
     /* Constructor. Receives a list of features. */
-    public EvolvingSolution(List<Feature> featureList)
+    public EvolvingSolution(List<IOptimizationTarget> featureList)
     {
         assert featureList != null;
         assert !featureList.isEmpty();
@@ -37,10 +37,10 @@ public class EvolvingSolution
         assert !solution.getFeatureList().isEmpty();
         
         /* Create a new array list. */
-        this.featureList = new ArrayList<Feature>();
+        this.featureList = new ArrayList<IOptimizationTarget>();
         
         /* Copy all features from the input solution. */
-        for (Feature f : solution.getFeatureList())
+        for (IOptimizationTarget f : solution.getFeatureList())
                 this.featureList.add(f.clone());
     }
 
@@ -48,7 +48,7 @@ public class EvolvingSolution
      * Get the list of features in this solution.
      * @return the solution
      */
-    public List<Feature> getFeatureList()
+    public List<IOptimizationTarget> getFeatureList()
     {
         return featureList;
     }
@@ -57,7 +57,7 @@ public class EvolvingSolution
      * Set the list of features for this solution.
      * @param solution the solution to set
      */
-    public void setSolution(List<Feature> solution)
+    public void setSolution(List<IOptimizationTarget> solution)
     {
         assert solution != null;
         
@@ -65,7 +65,7 @@ public class EvolvingSolution
     }
     
     public void print(){
-        for(Feature f:featureList){
+        for(IOptimizationTarget f:featureList){
             logger.info("{}", f);
         }
     }

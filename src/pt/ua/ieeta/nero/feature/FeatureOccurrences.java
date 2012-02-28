@@ -4,11 +4,13 @@
  */
 package pt.ua.ieeta.nero.feature;
 
+import pt.ua.ieeta.nero.feaure.targets.BIOFeature;
+
 /**
  *
  * @author david
  */
-public class FeatureOccurrences extends Feature {
+public class FeatureOccurrences extends BIOFeature {
 
     private int occurrencesB, occurrencesI, occurrencesO;
 

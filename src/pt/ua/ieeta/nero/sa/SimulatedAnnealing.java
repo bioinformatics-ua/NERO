@@ -3,7 +3,7 @@ package pt.ua.ieeta.nero.sa;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import pt.ua.ieeta.nero.feature.Feature;
+import pt.ua.ieeta.nero.feaure.targets.IOptimizationTarget;
 
 
 /**
@@ -12,19 +12,24 @@ import pt.ua.ieeta.nero.feature.Feature;
  */
 public class SimulatedAnnealing implements Runnable
 {
-    /* Final results: solution and its score. */
+    /* Logger. */
     private static Logger logger = LoggerFactory.getLogger(SimulatedAnnealing.class);
+    
+    /* Final results: solution and its score. */
     private EvolvingSolution resultingSolution;
     private double score;
     
     /* Simmulated annealing parameters */
     private double coolingSchedule;
     private double convergenceFraction;
-    private double dispersionFactor;
+    private double initialDispersionFactor;
     private double mutationAffectedPercent;
     private int kmax;
     private IFitnessAssessor fitnessCalculator;
     private EvolvingSolution seed;
+    
+    /* Neighbour generator. */
+    INeighbourGenerator bioNeighbourGenerator = new BIONeighbourGenerator();
 
     /* DEBUG flag. */
     private boolean DEBUG = true;
@@ -41,24 +46,24 @@ public class SimulatedAnnealing implements Runnable
         this.kmax = 10000;
         this.coolingSchedule = 0.9;
         this.convergenceFraction = 0.1;
-        this.dispersionFactor = 0.25;
+        this.initialDispersionFactor = 0.25;
         this.mutationAffectedPercent = 0.1;
         this.fitnessCalculator = fitnessCalculator;
         this.seed = seed;
     }
     
     /** Class constructor. Receives some parameters for the simmulated annealing algorithm.
-     ** @param fitnessCalculator The class that implements the IFitnessAssessor interface. Responsible for calculating the fitness. 
-     ** @param seed The initial object to start from. 
-     ** @param kmax The maximum number of iterations. Each iteration corresponds to a single call to the fitnessCalculator object. 
-     ** @param coolingSchedule Controls the simmulated annealing temperature decrease: 
-     **                        smaller values make the temperature decrease faster, and the algorithm terminate faster as well.
-     **                        Larger values (closer to 1) generally return better solutions. 
-     ** @param convergenceFraction The percentage of kmax that is considered to be the maximum number of consecutive iterations 
-     **                            without evolution. 
-     ** @param dispersionFactor Parameter used when creating mutations. Larger values create larger mutations. 
-     ** @param mutationAffectedPercent The maximum percentage of features that is affected by mutation in each iteration. */
-    public SimulatedAnnealing(IFitnessAssessor fitnessCalculator, EvolvingSolution seed, int kmax, double coolingSchedule, double convergenceFraction, double dispersionFactor, double mutationAffectedPercent)
+     * @param fitnessCalculator The class that implements the IFitnessAssessor interface. Responsible for calculating the fitness. 
+     * @param seed The initial object to start from. 
+     * @param kmax The maximum number of iterations. Each iteration corresponds to a single call to the fitnessCalculator object. 
+     * @param coolingSchedule Controls the simmulated annealing temperature decrease: 
+     *                        smaller values make the temperature decrease faster, and the algorithm terminate faster as well.
+     *                        Larger values (closer to 1) generally return better solutions. 
+     * @param convergenceFraction The percentage of kmax that is considered to be the maximum number of consecutive iterations 
+     *                            without evolution. 
+     * @param initialDispersionFactor Parameter used when creating mutations. Larger values create larger mutations. 
+     * @param mutationAffectedPercent The maximum percentage of features that is affected by mutation in each iteration. */
+    public SimulatedAnnealing(IFitnessAssessor fitnessCalculator, EvolvingSolution seed, int kmax, double coolingSchedule, double convergenceFraction, double initialDispersionFactor, double mutationAffectedPercent)
     {
         assert fitnessCalculator != null;
         assert seed != null;
@@ -66,14 +71,14 @@ public class SimulatedAnnealing implements Runnable
         assert kmax > 0;
         assert ((coolingSchedule > 0) && (coolingSchedule < 1));
         assert convergenceFraction > 0;
-        assert ((dispersionFactor > 0) && (dispersionFactor <= 1));
+        assert ((initialDispersionFactor > 0) && (initialDispersionFactor <= 1));
         
         this.kmax = kmax;
         this.coolingSchedule = coolingSchedule;
         this.fitnessCalculator = fitnessCalculator;
         this.seed = seed;
         this.convergenceFraction = convergenceFraction;
-        this.dispersionFactor = dispersionFactor;
+        this.initialDispersionFactor = initialDispersionFactor;
         this.mutationAffectedPercent = mutationAffectedPercent;
     }
     
@@ -137,6 +142,9 @@ public class SimulatedAnnealing implements Runnable
 
               /* Calculate acceptance probability. */
               pacceptance = calculateAcceptanceProbability(e, enew, k);
+              logger.info("Acceptance probability: " + pacceptance);
+              
+              /* Accept current solution? If it's better, always accept (enew > e) ! */
               if ((enew > e) || (pacceptance > Math.random()))
               {
                   s = snew;
@@ -178,7 +186,7 @@ public class SimulatedAnnealing implements Runnable
             
             logger.info("Terminated because " + reason);
             
-            for (Feature f: sbest.getFeatureList()){
+            for (IOptimizationTarget f: sbest.getFeatureList()){
                     System.out.println(f.toString());
             }
         }
@@ -229,36 +237,12 @@ public class SimulatedAnnealing implements Runnable
         assert solution != null;
         assert !solution.getFeatureList().isEmpty();
                         
-        /* Create a neighbour solution object. */
-        EvolvingSolution neighbour = new EvolvingSolution(solution);
+        EvolvingSolution neighbour = bioNeighbourGenerator.getNeighbour(solution, k, kmax, initialDispersionFactor, mutationAffectedPercent);
         
-        for (int i = 0; i < mutationAffectedPercent * neighbour.getFeatureList().size(); i++)
+        if (neighbour == null)
         {
-            /* Calculate a random position. */
-            int randomPos = (int) Math.round(Math.random() * (solution.getFeatureList().size()-1));
-
-            /* Get feature to be mutated. */
-            Feature selectedFeature = neighbour.getFeatureList().get(randomPos);
-
-            /*   0----------BI-----------IO--------1    */
-            double BIpos = selectedFeature.getB();
-            double IOpos = selectedFeature.getB() + selectedFeature.getI();
-
-            /* Mutate B, I and O values by adding or subtracting a random value that initially varies
-            * between -dispersionFactor and +dispersionFactor. That interval shrinks with passing iterations. */
-            double factor1 = (Math.random() - 0.5) * 2 * ((kmax-k)/(double)kmax) * dispersionFactor;
-            double factor2 = (Math.random() - 0.5) * 2 * ((kmax-k)/(double)kmax) * dispersionFactor;
-            double newBIpos = Math.min(1, Math.max(0 , BIpos + factor1));
-            double newIOpos = Math.min(1, Math.max(0 , IOpos + factor2));
-
-            selectedFeature.setB(newBIpos);
-            selectedFeature.setI(newBIpos>newIOpos? 0 : newIOpos-newBIpos);
-            selectedFeature.setO(1 - (newBIpos>newIOpos? newBIpos : newIOpos));
-
-            assert ((selectedFeature.getB() >= 0.0) && (selectedFeature.getB() <= 1.0));
-            assert ((selectedFeature.getI() >= 0.0) && (selectedFeature.getI() <= 1.0));
-            assert ((selectedFeature.getO() >= 0.0) && (selectedFeature.getO() <= 1.0));
-            assert selectedFeature.getB() + selectedFeature.getI() + selectedFeature.getO() <= 1.0;
+            logger.error("Simulated Anealing: There was a problem generating a new neighbour from the current solution.");
+            return solution;
         }
         
         return neighbour;

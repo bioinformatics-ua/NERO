@@ -19,7 +19,7 @@
  */
 package pt.ua.ieeta.nero.crf;
 
-import pt.ua.ieeta.nero.feature.Feature;
+import pt.ua.ieeta.nero.feaure.targets.BIOFeature;
 import cc.mallet.fst.*;
 import cc.mallet.fst.semi_supervised.StateLabelMap;
 import cc.mallet.fst.semi_supervised.constraints.OneLabelKLGEConstraints;
@@ -35,27 +35,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
-import java.util.zip.GZIPOutputStream;
 import org.apache.commons.lang.NotImplementedException;
-import org.apache.commons.lang.time.StopWatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import pt.ua.ieeta.nero.FSOptimisation;
-import pt.ua.ieeta.nero.external.evaluator.BC2Evaluator;
 import pt.ua.ieeta.nero.external.evaluator.Performance;
 import pt.ua.ieeta.nero.feature.metrics.InfoGainUtil;
 import pt.ua.ieeta.nero.sa.EvolvingSolution;
 import pt.ua.ieeta.nero.feature.pipe.PipeBuilder;
-import pt.ua.tm.gimli.annotator.Annotator;
+import pt.ua.ieeta.nero.feaure.targets.IOptimizationTarget;
 import pt.ua.tm.gimli.config.Constants;
 import pt.ua.tm.gimli.corpus.Corpus;
 import pt.ua.tm.gimli.exception.GimliException;
 import pt.ua.tm.gimli.config.Constants.Parsing;
 import pt.ua.tm.gimli.model.CRFBase;
-import pt.ua.tm.gimli.processing.Abbreviation;
-import pt.ua.tm.gimli.processing.Parentheses;
 import pt.ua.tm.gimli.util.FileUtil;
-import pt.ua.tm.gimli.writer.BCWriter;
 
 /**
  * The CRF model used by Gimli, providing features to train and test the models.
@@ -109,15 +103,17 @@ public class CRFModel extends CRFBase {
 
         HashMap<Integer, double[][]> constraints = new HashMap<Integer, double[][]>();
 
-        List<Feature> features = solution.getFeatureList();
-        for (Feature f : features) {
-
+        List<IOptimizationTarget> features = solution.getFeatureList();
+        for (IOptimizationTarget bioFeature : features) 
+        {
+            BIOFeature f = (BIOFeature) bioFeature;
+            
             // Get feature index
             int featureIndex = data.getDataAlphabet().lookupIndex(f.getName(), false);
             if (featureIndex == -1) {
                 logger.error("Feature {} not found in the alphabet!", f.getName());
                 continue;
-                //throw new RuntimeException("Feature " + f.getName() + " not found in the alphabet!");
+                //throw new RuntimeException("BIOFeature " + f.getName() + " not found in the alphabet!");
             }
 
             // Initiate probabilities
@@ -229,7 +225,7 @@ public class CRFModel extends CRFBase {
          * CRFOptimizableByLabelLikelihood(crf, train) }; }
          */
 
-        logger.info("TOTAL SIZE OF ALPHABET AFTER FEATURE SELECTION): {}", train.getDataAlphabet().size());
+//        logger.info("TOTAL SIZE OF ALPHABET AFTER FEATURE SELECTION): {}", train.getDataAlphabet().size());
 
         // Train
 
