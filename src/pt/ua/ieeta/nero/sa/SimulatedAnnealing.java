@@ -29,7 +29,7 @@ public class SimulatedAnnealing implements Runnable
     private EvolvingSolution seed;
     
     /* Neighbour generator. */
-    INeighbourGenerator bioNeighbourGenerator = new WeightsNeighbourGenerator();
+    INeighbourGenerator neighbourGenerator = new MixedNeighbourGenerator();
 
     /* DEBUG flag. */
     private boolean DEBUG = true;
@@ -237,7 +237,7 @@ public class SimulatedAnnealing implements Runnable
         assert solution != null;
         assert !solution.getFeatureList().isEmpty();
                         
-        EvolvingSolution neighbour = bioNeighbourGenerator.getNeighbour(solution, k, kmax, initialDispersionFactor, mutationAffectedPercent);
+        EvolvingSolution neighbour = neighbourGenerator.getNeighbour(solution, k, kmax, initialDispersionFactor, mutationAffectedPercent);
         
         if (neighbour == null)
         {
