@@ -66,7 +66,7 @@ public class NrFeaturesOptimizationTarget extends IOptimizationTarget
         int value = getNumFeatures();
         value = (int) Math.min(MAX, Math.max(MIN, value * mutationFactor));
         
-        if (DEBUG) logger.info("GE Weight was " + getNumFeatures() + " and now is " + value);
+        if (DEBUG) logger.info("Num features was " + getNumFeatures() + " and now is " + value);
         
         /* Save value. */
         setNumFeatures(value);

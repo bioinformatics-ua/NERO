@@ -1,10 +1,7 @@
 
 package pt.ua.ieeta.nero.sa;
 
-import pt.ua.ieeta.nero.feaure.targets.GEWeightOptimizationTarget;
-import pt.ua.ieeta.nero.feaure.targets.GPVOptimizationTarget;
 import pt.ua.ieeta.nero.feaure.targets.IOptimizationTarget;
-import pt.ua.ieeta.nero.feaure.targets.NrFeaturesOptimizationTarget;
 
 /**
  *

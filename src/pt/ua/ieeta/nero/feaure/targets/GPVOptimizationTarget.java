@@ -23,6 +23,11 @@ public class GPVOptimizationTarget extends IOptimizationTarget
     private static double MIN = 0;
     private static double MAX = 1.5;
     
+    public GPVOptimizationTarget(double GPVWeight) {
+        assert (GPVWeight >= MIN && GPVWeight <= MAX);
+        this.GPVWeight = GPVWeight;
+    }
+    
     public double getGPVWeight()
     {
         return GPVWeight;
@@ -53,7 +58,7 @@ public class GPVOptimizationTarget extends IOptimizationTarget
         double value = getGPVWeight();
         value = Math.min(MAX, Math.max(MIN, value * mutationFactor));
         
-        if (DEBUG) logger.info("GE Weight was " + getGPVWeight() + " and now is " + value);
+        if (DEBUG) logger.info("GPV Weight was " + getGPVWeight() + " and now is " + value);
         
         /* Save value. */
          setGPVWeight(value);

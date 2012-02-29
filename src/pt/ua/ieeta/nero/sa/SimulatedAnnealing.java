@@ -29,7 +29,7 @@ public class SimulatedAnnealing implements Runnable
     private EvolvingSolution seed;
     
     /* Neighbour generator. */
-    INeighbourGenerator bioNeighbourGenerator = new BIONeighbourGenerator();
+    INeighbourGenerator bioNeighbourGenerator = new WeightsNeighbourGenerator();
 
     /* DEBUG flag. */
     private boolean DEBUG = true;
@@ -219,7 +219,7 @@ public class SimulatedAnnealing implements Runnable
         
         try 
         {
-            double fitness = fitnessCalculator.getFitness(solution);
+            double fitness = fitnessCalculator.getFitness(solution).getF1();
             //assert ((fitness >= 0) && (fitness <= 1)); //fitness constrains ?
             
             return fitness;

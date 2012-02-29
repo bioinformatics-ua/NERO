@@ -129,7 +129,7 @@ public class FSOptimisation {
             logger.info("features to optimise: {}", numFeaturesToOptimise);
             List<String> featuresOptimise = features.subList(0, numFeaturesToOptimise);
 
-            EvolvingSolution seed = Nero.createBaseSolution(trainStream, config, featuresOptimise);
+            EvolvingSolution seed = Nero.createBaseSolution(features.size());
 
             StopWatch sw = new StopWatch();
             sw.start();
@@ -155,7 +155,7 @@ public class FSOptimisation {
             model.setCRF(crfs[i]);
 
 
-            int numIterations = model.train(trainIL, unlabeledIL, seed, Integer.MAX_VALUE);
+            int numIterations = model.train(trainIL, unlabeledIL, seed, null, Integer.MAX_VALUE);
             sw.stop();
 
 

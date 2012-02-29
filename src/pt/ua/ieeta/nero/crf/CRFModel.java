@@ -43,7 +43,7 @@ import pt.ua.ieeta.nero.external.evaluator.Performance;
 import pt.ua.ieeta.nero.feature.metrics.InfoGainUtil;
 import pt.ua.ieeta.nero.sa.EvolvingSolution;
 import pt.ua.ieeta.nero.feature.pipe.PipeBuilder;
-import pt.ua.ieeta.nero.feaure.targets.IOptimizationTarget;
+import pt.ua.ieeta.nero.feaure.targets.*;
 import pt.ua.tm.gimli.config.Constants;
 import pt.ua.tm.gimli.corpus.Corpus;
 import pt.ua.tm.gimli.exception.GimliException;
@@ -54,7 +54,8 @@ import pt.ua.tm.gimli.util.FileUtil;
 /**
  * The CRF model used by Gimli, providing features to train and test the models.
  *
- * @author David Campos (<a href="mailto:david.campos@ua.pt">david.campos@ua.pt</a>)
+ * @author David Campos (<a
+ * href="mailto:david.campos@ua.pt">david.campos@ua.pt</a>)
  * @version 1.0
  * @since 1.0
  */
@@ -99,15 +100,13 @@ public class CRFModel extends CRFBase {
         this.supervisedCRF = supervisedCRF;
     }
 
-    private HashMap<Integer, double[][]> loadGEConstraints(EvolvingSolution solution, InstanceList data) {
+    private HashMap<Integer, double[][]> loadGEConstraints(List<BIOFeature> features, InstanceList data) {
 
         HashMap<Integer, double[][]> constraints = new HashMap<Integer, double[][]>();
 
-        List<IOptimizationTarget> features = solution.getFeatureList();
-        for (IOptimizationTarget bioFeature : features) 
-        {
+        for (IOptimizationTarget bioFeature : features) {
             BIOFeature f = (BIOFeature) bioFeature;
-            
+
             // Get feature index
             int featureIndex = data.getDataAlphabet().lookupIndex(f.getName(), false);
             if (featureIndex == -1) {
@@ -143,33 +142,21 @@ public class CRFModel extends CRFBase {
         return constraints;
     }
 
-    public double getF1(InstanceList test) {
-        String[] allowedTags = new String[]{Constants.LabelTag.B.toString(), Constants.LabelTag.I.toString()};
-
-        // Define Evaluator
-        F1MultiSegmentationEvaluator evaluator = new F1MultiSegmentationEvaluator(
-                new InstanceList[]{test},
-                new String[]{"test"}, allowedTags, allowedTags) {
-        };
-
-        // Evaluate
-        NoopTransducerTrainer crfTrainer = new NoopTransducerTrainer(getCRF());
-        evaluator.evaluateInstanceList(crfTrainer, test, "test");
-
-        return evaluator.getOverallF1();
-    }
-
-    public int train(final InstanceList train, final InstanceList unlabeled, final EvolvingSolution features, final int iterations) {
-        //CRF crf = getCRF();
-
-        // Semi-supervised
-        int numThreads = 4;
+    public int train(final InstanceList train, final InstanceList unlabeled, final EvolvingSolution solution, final List<BIOFeature> features, final int iterations) {
+        // Get evolving solution
+        List<IOptimizationTarget> targets = solution.getFeatureList();
+        double ge = ((GEWeightOptimizationTarget) targets.get(0)).getGEWeight();
+        double gvp = ((GPVOptimizationTarget) targets.get(1)).getGPVWeight();
+        int numFeatures = ((NrFeaturesOptimizationTarget) targets.get(2)).getNumFeatures();
+        
+        List<BIOFeature> featuresSubSet = features.subList(0, numFeatures);
+        
 
         // Load constraints
 
         ArrayList constraintsList = new ArrayList();
         if (unlabeled != null && features != null) {
-            HashMap<Integer, double[][]> constraints = loadGEConstraints(features, train);
+            HashMap<Integer, double[][]> constraints = loadGEConstraints(featuresSubSet, train);
 
             // Set OneLabelKL constraints OneLabelKLGEConstraints 
             OneLabelKLGEConstraints geConstraints = new OneLabelKLGEConstraints();
@@ -204,12 +191,8 @@ public class CRFModel extends CRFBase {
         }
 
 
-        // Initialise CRF
-        int order = getConfig().getOrder() + 1;
-        int[] orders = new int[order];
-        for (int i = 0; i < order; i++) {
-            orders[i] = i;
-        }
+        
+
 
         // Set label map
         StateLabelMap map = new StateLabelMap(train.getTargetAlphabet(), true);
@@ -218,10 +201,12 @@ public class CRFModel extends CRFBase {
 
         // Optimazable gradients
         /*
-         * Optimizable.ByGradientValue[] opts; if (unlabeled != null && features != null) { opts = new
-         * Optimizable.ByGradientValue[]{ new CRFOptimizableByGE(crf, constraintsList, unlabeled, map, 8), new
-         * CRFOptimizableByLabelLikelihood(crf, train),}; } else { opts = new Optimizable.ByGradientValue[]{ //new
-         * CRFOptimizableByGE(crf, constraintsList, unlabeled, map, numThreads, 1.0), new
+         * Optimizable.ByGradientValue[] opts; if (unlabeled != null && features
+         * != null) { opts = new Optimizable.ByGradientValue[]{ new
+         * CRFOptimizableByGE(crf, constraintsList, unlabeled, map, 8), new
+         * CRFOptimizableByLabelLikelihood(crf, train),}; } else { opts = new
+         * Optimizable.ByGradientValue[]{ //new CRFOptimizableByGE(crf,
+         * constraintsList, unlabeled, map, numThreads, 1.0), new
          * CRFOptimizableByLabelLikelihood(crf, train) }; }
          */
 
@@ -235,10 +220,9 @@ public class CRFModel extends CRFBase {
 
             MyCRFTrainerByLikelihoodAndGE2 crfTrainer = new MyCRFTrainerByLikelihoodAndGE2(crf, constraintsList, map);
             crfTrainer.setNumThreads(8);
-            crfTrainer.setGEWeight(1.0);
-            crfTrainer.setGaussianPriorVariance(1.0);
+            crfTrainer.setGEWeight(ge);
+            crfTrainer.setGaussianPriorVariance(gvp);
             crfTrainer.setInitSupervised(true);
-            //crfTrainer.setSupervisedCRF(supervisedCRF);
             crfTrainer.train(train, unlabeled, iterations);
 
             //this.supervisedCRF = crfTrainer.getSupervisedCRF();
@@ -352,7 +336,8 @@ public class CRFModel extends CRFBase {
                 numFeatures[j] = feat;
 
                 /*
-                 * if (j == 0) { for (String f : features) { logger.info("{}", f); } }
+                 * if (j == 0) { for (String f : features) { logger.info("{}",
+                 * f); } }
                  */
 
                 // Get data
@@ -375,38 +360,50 @@ public class CRFModel extends CRFBase {
                 /*
                  * InstanceList newInstList = train.toModelFormatTrain(p);
                  *
-                 * // Set CRF int order = mc.getOrder() + 1; int[] orders = new int[order]; for (int i = 0; i < order;
-                 * i++) { orders[i] = i; }
+                 * // Set CRF int order = mc.getOrder() + 1; int[] orders = new
+                 * int[order]; for (int i = 0; i < order; i++) { orders[i] = i;
+                 * }
                  *
-                 * CRF crf = new CRF(newInstList.getPipe(), (Pipe) null); String startStateName = crf.addOrderNStates(
-                 * newInstList, orders, null, // "defaults" parameter; see mallet javadoc "O", forbiddenPattern, null,
-                 * true); // true for a fully connected CRF
+                 * CRF crf = new CRF(newInstList.getPipe(), (Pipe) null); String
+                 * startStateName = crf.addOrderNStates( newInstList, orders,
+                 * null, // "defaults" parameter; see mallet javadoc "O",
+                 * forbiddenPattern, null, true); // true for a fully connected
+                 * CRF
                  *
                  * for (int i = 0; i < crf.numStates(); i++) {
-                 * crf.getState(i).setInitialWeight(Transducer.IMPOSSIBLE_WEIGHT); }
-                 * crf.getState(startStateName).setInitialWeight(0.0); crf.setWeightsDimensionAsIn(newInstList, false);
-                 * CRFModel model = new CRFModel(mc, Parsing.FW); model.setCRF(crf);
+                 * crf.getState(i).setInitialWeight(Transducer.IMPOSSIBLE_WEIGHT);
+                 * } crf.getState(startStateName).setInitialWeight(0.0);
+                 * crf.setWeightsDimensionAsIn(newInstList, false); CRFModel
+                 * model = new CRFModel(mc, Parsing.FW); model.setCRF(crf);
                  *
-                 * //model.train(trainInstances, unlabeled, Nero.createBaseSolution(), Integer.MAX_VALUE); int
-                 * numIterations = model.train(newInstList, null, null, Integer.MAX_VALUE, null); model.write(new
-                 * GZIPOutputStream(new FileOutputStream("resources/model/bc2gm_o1_fw_" + sizes[j] + ".gz")));
+                 * //model.train(trainInstances, unlabeled,
+                 * Nero.createBaseSolution(), Integer.MAX_VALUE); int
+                 * numIterations = model.train(newInstList, null, null,
+                 * Integer.MAX_VALUE, null); model.write(new
+                 * GZIPOutputStream(new
+                 * FileOutputStream("resources/model/bc2gm_o1_fw_" + sizes[j] +
+                 * ".gz")));
                  *
                  * iterations[j] = numIterations;
                  *
-                 * //InstanceList devInstances = dev.toModelFormatTrain(p); //results[j] = model.getF1(devInstances);
+                 * //InstanceList devInstances = dev.toModelFormatTrain(p);
+                 * //results[j] = model.getF1(devInstances);
                  *
                  * Annotator an = new Annotator(dev); an.annotate(model);
                  *
-                 * // Pre-process annotated corpus Parentheses.processRemoving(dev); Abbreviation.process(dev);
+                 * // Pre-process annotated corpus
+                 * Parentheses.processRemoving(dev); Abbreviation.process(dev);
                  *
-                 * String annotations = "resources/silver/bc2gm_dev_o1_fw_" + sizes[j]; BCWriter bw = new BCWriter();
-                 * bw.write(dev, new FileOutputStream(annotations));
+                 * String annotations = "resources/silver/bc2gm_dev_o1_fw_" +
+                 * sizes[j]; BCWriter bw = new BCWriter(); bw.write(dev, new
+                 * FileOutputStream(annotations));
                  *
-                 * BC2Evaluator eval = new BC2Evaluator(geneFile, geneFile, annotations); results[j] =
-                 * eval.getPerformance();
+                 * BC2Evaluator eval = new BC2Evaluator(geneFile, geneFile,
+                 * annotations); results[j] = eval.getPerformance();
                  */
                 /*
-                 * an = new Annotator(test); an.annotate(model); bw = new BCWriter(); bw.write(test, new
+                 * an = new Annotator(test); an.annotate(model); bw = new
+                 * BCWriter(); bw.write(test, new
                  * FileOutputStream("resources/silver/bc2gm_test_o1_fw"));
                  */
 

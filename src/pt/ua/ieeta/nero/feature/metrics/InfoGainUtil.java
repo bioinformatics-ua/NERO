@@ -58,6 +58,10 @@ public class InfoGainUtil {
         }
     }
 
+    public List<String> getFeatures(){
+        return getFeatures(data.getDataAlphabet().size());
+    }
+    
     public List<String> getFeatures(int numFeatures) {
         
         logger.info("TOTAL SIZE OF ALPHABET: {}", data.getDataAlphabet().size());
@@ -75,8 +79,6 @@ public class InfoGainUtil {
 
             features.add(name);
         }
-
-
         return features;
     }
 }

@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import pt.ua.ieeta.nero.FSOptimisation;
 import pt.ua.ieeta.nero.external.evaluator.BC2Evaluator;
 import pt.ua.ieeta.nero.external.evaluator.Performance;
+import pt.ua.ieeta.nero.feaure.targets.BIOFeature;
 import pt.ua.ieeta.nero.sa.EvolvingSolution;
 import pt.ua.ieeta.nero.sa.IFitnessAssessor;
 import pt.ua.tm.gimli.annotator.Annotator;
@@ -51,8 +52,9 @@ public class CRFFitnessAssessor implements IFitnessAssessor {
     private InstanceList unlabeled;
     private String geneFile;
     private CRF supervisedCRF;
+    private List<BIOFeature> features;
 
-    public CRFFitnessAssessor(ModelConfig config, final InstanceList train, final InstanceList test, final InstanceList unlabeled, Corpus testCorpus, final List<String> features, final String geneFile, final CRF supervisedCRF) throws GimliException {
+    public CRFFitnessAssessor(ModelConfig config, final InstanceList train, final InstanceList test, final InstanceList unlabeled, Corpus testCorpus, final List<BIOFeature> features, final String geneFile, final CRF supervisedCRF) throws GimliException {
         assert (config != null);
         assert (train != null);
         assert (test != null);
@@ -69,6 +71,7 @@ public class CRFFitnessAssessor implements IFitnessAssessor {
         this.geneFile = geneFile;
         this.supervisedCRF = supervisedCRF;
         this.testCorpus = testCorpus;
+        this.features = features;
         
         // Load unlabeled data
         //logger.info("Loading unlabeled data...");
@@ -77,66 +80,7 @@ public class CRFFitnessAssessor implements IFitnessAssessor {
     
     
     @Override
-    public double getFitness(EvolvingSolution solution) {
-        assert (solution != null);
-
-        CRF crf =new CRF(supervisedCRF);
-        
-//        logger.info("SUPERVISED CRF: {}", FSOptimisation.getPerformance(config, crf, testCorpus, geneFile));
-        
-        // Create CRFModel
-        CRFModel model = new CRFModel(config, Constants.Parsing.FW);
-
-        // Set CRF
-        model.setCRF(new CRF(supervisedCRF));
-
-        StopWatch time = new StopWatch();
-        time.start();
-        int numIterations = model.train(train, unlabeled, solution, Integer.MAX_VALUE);
-        time.stop();
-
-        // Annotate corpus
-        Annotator an = new Annotator(testCorpus);
-        an.annotate(model);
-        
-        // Post-process corpus
-        Parentheses.processRemoving(testCorpus);
-        Abbreviation.process(testCorpus);
-        
-        // Generate annotation file
-        File tmp = null;
-        try {
-            tmp = File.createTempFile("annotations", ".txt");
-        } catch (IOException ex) {
-            throw new RuntimeException("There was a problem creating the temporary file.", ex);
-        }
-        tmp.deleteOnExit();
-        
-        BCWriter writer = new BCWriter();
-        try {
-            writer.write(testCorpus, new FileOutputStream(tmp));
-        } catch (Exception ex) {
-            throw new RuntimeException("There was a problem writing the annotations file.", ex);
-        }
-        
-        // Get Performance
-        BC2Evaluator eval = new BC2Evaluator(geneFile, geneFile, tmp.getAbsolutePath());
-        Performance p = eval.getPerformance();
-        p.setNumIterations(numIterations);
-        p.setTime(time);
-        
-        logger.info("PERFORMANCE: {}", p);
-        
-        // Return F-measure
-        return p.getF1();
-    }
-    
-    
-    
-    
-    
-    
-    public Performance getFitnessPerformance(EvolvingSolution solution) {
+    public Performance getFitness(EvolvingSolution solution) {
         assert (solution != null);
         int numIterations = 0;
         
@@ -148,7 +92,7 @@ public class CRFFitnessAssessor implements IFitnessAssessor {
 
         try {
             // Train CRF Model
-            numIterations = model.train(train, unlabeled, solution, MAX_ITERATIONS);
+            numIterations = model.train(train, unlabeled, solution, features, MAX_ITERATIONS);
         } catch (Exception ex) {
             logger.error("Problem training CRF: ", ex);
         }
