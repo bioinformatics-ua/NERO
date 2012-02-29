@@ -28,6 +28,7 @@ public class NrFeaturesOptimizationTarget extends IOptimizationTarget
         assert maxNumFeatures >= 1;
         
         MAX = maxNumFeatures;
+        numFeatures = maxNumFeatures;
         internalDispersionFactor = 0.6 * maxNumFeatures;
     }
     
@@ -41,7 +42,7 @@ public class NrFeaturesOptimizationTarget extends IOptimizationTarget
         return numFeatures;
     }
 
-    public void setNumFeatures(int numFeatures)
+    private void setNumFeatures(int numFeatures)
     {
         assert numFeatures >= 1;
         
@@ -64,9 +65,9 @@ public class NrFeaturesOptimizationTarget extends IOptimizationTarget
         
         /* Apply mutation. */
         int value = getNumFeatures();
-        value = (int) Math.min(MAX, Math.max(MIN, value * mutationFactor));
+        value = (int) Math.min(MAX, Math.max(MIN, value + mutationFactor));
         
-        if (DEBUG) logger.info("Num features was " + getNumFeatures() + " and now is " + value);
+        if (DEBUG) logger.info("Num features was " + getNumFeatures() + " and now is " + value + " (mutationFactor="+mutationFactor+")");
         
         /* Save value. */
         setNumFeatures(value);

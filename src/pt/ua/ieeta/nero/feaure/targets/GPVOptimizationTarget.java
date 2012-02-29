@@ -33,7 +33,7 @@ public class GPVOptimizationTarget extends IOptimizationTarget
         return GPVWeight;
     }
 
-    public void setGPVWeight(double GPVWeight)
+    private void setGPVWeight(double GPVWeight)
     {
         assert GPVWeight >= 0;
         
@@ -56,9 +56,9 @@ public class GPVOptimizationTarget extends IOptimizationTarget
         
         /* Apply mutation. */
         double value = getGPVWeight();
-        value = Math.min(MAX, Math.max(MIN, value * mutationFactor));
+        value = Math.min(MAX, Math.max(MIN, value + mutationFactor));
         
-        if (DEBUG) logger.info("GPV Weight was " + getGPVWeight() + " and now is " + value);
+        if (DEBUG) logger.info("GPV Weight was " + getGPVWeight() + " and now is " + value + " (mutationFactor="+mutationFactor+")");
         
         /* Save value. */
          setGPVWeight(value);

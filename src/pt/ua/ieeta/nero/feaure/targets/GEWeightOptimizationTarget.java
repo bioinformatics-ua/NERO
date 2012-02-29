@@ -34,7 +34,7 @@ public class GEWeightOptimizationTarget extends IOptimizationTarget {
         return GEWeight;
     }
 
-    public void setGEWeight(double GEWeight) {
+    private void setGEWeight(double GEWeight) {
         assert GEWeight >= 0;
 
         this.GEWeight = GEWeight;
@@ -61,10 +61,10 @@ public class GEWeightOptimizationTarget extends IOptimizationTarget {
          * Apply mutation.
          */
         double value = getGEWeight();
-        value = Math.min(MAX, Math.max(MIN, value * mutationFactor));
+        value = Math.min(MAX, Math.max(MIN, value + mutationFactor));
 
         if (DEBUG) {
-            logger.info("GE Weight was " + getGEWeight() + " and now is " + value);
+            logger.info("GE Weight was " + getGEWeight() + " and now is " + value + " (mutationFactor="+mutationFactor+")");
         }
 
         /*

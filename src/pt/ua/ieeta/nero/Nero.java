@@ -3,7 +3,10 @@ package pt.ua.ieeta.nero;
 import cc.mallet.fst.CRF;
 import cc.mallet.pipe.Pipe;
 import cc.mallet.types.InstanceList;
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.LoggerFactory;
@@ -52,14 +55,12 @@ public class Nero {
         String unlabeledFile = processFileName("resources/corpus/silver/random_1k.gz");
         String configFile = processFileName("config/bc_semi.config");
 
-
         try {
             System.setErr(new PrintStream(new File("tmp")));
             System.setOut(new PrintStream(new File("tmp")));
         } catch (FileNotFoundException ex) {
             return;
         }
-
 
         System.out.println("Starting the NERO experiment...");
 
@@ -137,7 +138,7 @@ public class Nero {
         /*
          * Instantiate the simulated annealing algorithm.
          */
-        SimulatedAnnealing sa = new SimulatedAnnealing(fitnessClass, seed, 100, 0.1, 0.2, 0.2, 0.2);
+        SimulatedAnnealing sa = new SimulatedAnnealing(fitnessClass, seed, 100, 0.9, 0.2, 0.2, 0.2);
 
         try {
             Thread saThread = new Thread(sa);
