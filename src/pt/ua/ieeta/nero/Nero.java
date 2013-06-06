@@ -29,7 +29,7 @@ import pt.ua.tm.gimli.util.UnclosableBufferedInputStream;
 
 /**
  *
- * @author Paulo
+ * @author Paulo Gaspar
  */
 public class Nero {
 
